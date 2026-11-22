@@ -224,7 +224,7 @@ fn draw_header(frame: &mut Frame<'_>, area: Rect, app: &AppState) {
     let line = Paragraph::new(Line::from(vec![
         Span::styled("WARFRAME", Style::default().fg(Color::LightCyan).add_modifier(Modifier::BOLD)),
         Span::styled("  /  ", Style::default().fg(Color::DarkGray)),
-        Span::styled("SOL NODE 740", Style::default().fg(Color::White)),
+        Span::styled("JUPITER", Style::default().fg(Color::White)),
         Span::styled("  /  ", Style::default().fg(Color::DarkGray)),
         Span::styled("THE ROPALOLYST", Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD)),
         Span::raw("                         "),
