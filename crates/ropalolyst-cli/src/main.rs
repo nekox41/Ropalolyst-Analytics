@@ -110,20 +110,35 @@ impl AppState {
             .unwrap_or_else(|| "00:00.000".to_owned())
     }
 
-    fn encounter(&self) -> (&'static str, Color) {
+    fn encounter(&self) -> (String, Color) {
         let kind = self.analyzer.timeline.iter().rev().find_map(|event| match &event.kind {
-            EventKind::BossTransmission { kind: TransmissionKind::LaserKill } => Some(("激光处决结果（候选）", Color::Green)),
-            EventKind::BossCrashCinematicStopped { tower_id } => Some((match tower_id { 1 => "电塔一撞击动画结束", 2 => "电塔二撞击动画结束", 3 => "电塔三撞击动画结束", _ => "撞击动画结束" }, Color::Yellow)),
-            EventKind::BossTowerResetStarted { .. } => Some(("电塔复位动画", Color::Yellow)),
-            EventKind::BossTowerResetEnded { .. } => Some(("电塔复位动画结束", Color::Yellow)),
-            EventKind::BossCrashStarted { tower_id, cycle } => Some((match cycle { 1 => "第1轮撞塔", 2 => "第2轮撞塔", 3 => "第3轮撞塔", _ => "撞塔" }, Color::Yellow)),
-            EventKind::BossLandingStarted { .. } => Some(("Boss 击杀后落地动画", Color::Green)),
-            EventKind::BossLandingEnded { .. } => Some(("Boss 落地动画结束", Color::Green)),
-            EventKind::BossTransmission { kind } => Some((transmission_label(*kind), Color::Cyan)),
-            EventKind::BossArenaIntroStarted => Some(("Boss 登场动画", Color::Cyan)),
+            EventKind::BossTransmission { kind: TransmissionKind::LaserKill } =>
+                Some(("激光处决结果（候选）".to_owned(), Color::Green)),
+            EventKind::BossCrashCinematicStopped { tower_id } => Some((
+                format!("电塔 {} 撞击动画结束", tower_id),
+                Color::Yellow,
+            )),
+            EventKind::BossTowerResetStarted { cinematic_id } =>
+                Some((format!("电塔复位动画开始（实例 {cinematic_id}）"), Color::Yellow)),
+            EventKind::BossTowerResetEnded { cinematic_id } =>
+                Some((format!("电塔复位动画结束（实例 {cinematic_id}）"), Color::Yellow)),
+            EventKind::BossCrashStarted { tower_id, cycle } => Some((
+                format!("第 {cycle} 轮撞塔 · 电塔 {tower_id}"),
+                Color::Yellow,
+            )),
+            EventKind::BossLandingStarted { .. } =>
+                Some(("Boss 击杀后落地动画".to_owned(), Color::Green)),
+            EventKind::BossLandingEnded { .. } =>
+                Some(("Boss 落地动画结束".to_owned(), Color::Green)),
+            EventKind::BossTransmission { kind } =>
+                Some((transmission_label(*kind).to_owned(), Color::Cyan)),
+            EventKind::BossArenaIntroStarted =>
+                Some(("Boss 登场动画".to_owned(), Color::Cyan)),
+            EventKind::BossArenaIntroEnded =>
+                Some(("Boss 登场动画结束".to_owned(), Color::Cyan)),
             _ => None,
         });
-        kind.unwrap_or(("尚未检测到", Color::Gray))
+        kind.unwrap_or_else(|| ("尚未检测到".to_owned(), Color::Gray))
     }
 }
 
@@ -241,7 +256,7 @@ fn draw_metrics(frame: &mut Frame<'_>, area: Rect, app: &AppState) {
     let (encounter, color) = app.encounter();
     metric(frame, columns[0], "当前任务", &current, "任务状态", Color::Gray);
     metric(frame, columns[1], "任务计时", &app.elapsed(), "基于游戏日志时间戳", Color::Cyan);
-    metric(frame, columns[2], "Boss 阶段", encounter, "日志事件识别", color);
+    metric(frame, columns[2], "Boss 阶段", &encounter, "日志事件识别", color);
 }
 
 fn metric(frame: &mut Frame<'_>, area: Rect, title: &str, value: &str, hint: &str, color: Color) {
