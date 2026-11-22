@@ -1,5 +1,6 @@
 use std::{
     io::{self, Stdout},
+    time::Duration,
 };
 
 use anyhow::Result;
@@ -210,7 +211,7 @@ fn draw_main(frame: &mut Frame<'_>, area: Rect) {
         ])),
     ];
     frame.render_widget(
-        List::new(events).block(panel("RUN TIMELINE  ·  VERIFIED EVENTS ONLY")),
+        List::new(events).block(panel("RUN TIMELINE  ·  DETECTED MILESTONES")),
         left_rows[1],
     );
 
