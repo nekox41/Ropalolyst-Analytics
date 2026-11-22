@@ -8,9 +8,11 @@ pub mod event;
 pub mod ingest;
 pub mod mission;
 pub mod parser;
+pub mod storage;
 
 pub use analyzer::Analyzer;
 pub use event::{EventConfidence, EventKind, GameEvent, LogTimestamp};
 pub use ingest::{LogTailer, default_log_path};
 pub use mission::{MissionOutcome, MissionSession, MissionStatus};
 pub use parser::parse_log_line;
+pub use storage::RunStore;
