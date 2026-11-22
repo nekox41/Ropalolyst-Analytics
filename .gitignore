@@ -1,0 +1,15 @@
+/target
+/dist
+*.log
+*.etl
+*.mp4
+*.mkv
+*.avi
+*.sqlite
+*.sqlite3
+*.db
+.env
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
