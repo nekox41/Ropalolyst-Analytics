@@ -120,7 +120,6 @@ impl AppState {
             EventKind::BossLandingStarted { .. } => Some(("Boss 击杀后落地动画", Color::Green)),
             EventKind::BossLandingEnded { .. } => Some(("Boss 落地动画结束", Color::Green)),
             EventKind::BossTransmission { kind } => Some((transmission_label(*kind), Color::Cyan)),
-            EventKind::BossFightStarted => Some(("BOSS FIGHT", Color::Magenta)),
             EventKind::BossArenaIntroStarted => Some(("Boss 登场动画", Color::Cyan)),
             _ => None,
         });
