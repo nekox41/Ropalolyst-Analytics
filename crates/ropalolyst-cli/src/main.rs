@@ -40,7 +40,7 @@ impl AppState {
             Some(path) => {
                 let display = path.display().to_string();
                 if path.exists() {
-                    (Some(LogTailer::new(path)), format!("Watching {display}"))
+                    (Some(LogTailer::new_from_end(path)), format!("Watching {display}"))
                 } else {
                     (Some(LogTailer::new(path)), format!("Waiting for {display}"))
                 }
