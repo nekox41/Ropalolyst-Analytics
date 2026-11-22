@@ -120,7 +120,9 @@ impl AppState {
     fn encounter(&self) -> (&'static str, Color) {
         let kind = self.analyzer.timeline.iter().rev().find_map(|event| match &event.kind {
             EventKind::BossDefeatedCandidate => Some(("DEFEAT CANDIDATE", Color::Green)),
-            EventKind::BossCrashEnded { .. } => Some(("CRASH ANIMATION", Color::Yellow)),
+            EventKind::BossCrashCinematicStopped { .. } => Some(("CRASH CINEMATIC END", Color::Yellow)),
+            EventKind::BossTowerResetStarted => Some(("TOWER RESET", Color::Yellow)),
+            EventKind::BossTowerResetEnded => Some(("TOWER RESET END", Color::Yellow)),
             EventKind::BossCrashStarted { sequence } => Some((match sequence {
                 1 => "CRASH 1 / 3",
                 2 => "CRASH 2 / 3",
@@ -368,7 +370,9 @@ fn event_label(kind: &EventKind) -> (&'static str, Color) {
             3 => "Crash sequence 3 started",
             _ => "Crash sequence started",
         }, Color::Yellow),
-        EventKind::BossCrashEnded { .. } => ("Crash animation ended", Color::Yellow),
+        EventKind::BossCrashCinematicStopped { .. } => ("Crash cinematic stopped", Color::Yellow),
+        EventKind::BossTowerResetStarted => ("Tower reset cinematic started", Color::Yellow),
+        EventKind::BossTowerResetEnded => ("Tower reset cinematic stopped", Color::Yellow),
         EventKind::BossDefeatedCandidate => ("Boss defeated candidate", Color::Green),
         EventKind::Unknown => ("Unknown", Color::Gray),
     }
