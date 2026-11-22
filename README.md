@@ -46,7 +46,7 @@ Executable:
 target/release/ropalolyst-analytics.exe
 ```
 
-Start Ropalolyst Analytics before launching Warframe so it can follow the newly created `EE.log` from its beginning. If the analyzer is started while a log already exists, it follows only new lines to avoid importing old sessions again.
+The analyzer can be started before or after Warframe. It reads the current `EE.log` from the beginning, then follows appended lines and detects log recreation/truncation. Completed sessions are deduplicated in SQLite using the log-generation identifier and mission start timestamp.
 
 ## Controls
 
