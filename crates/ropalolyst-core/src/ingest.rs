@@ -1,6 +1,6 @@
 use std::{
     fs::{self, File},
-    io::{self, Read, Seek, SeekFrom, Write},
+    io::{self, Read, Seek, SeekFrom},
     path::{Path, PathBuf},
 };
 
@@ -68,7 +68,7 @@ impl LogTailer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::{thread, time::{SystemTime, UNIX_EPOCH}};
+    use std::{io::Write, thread, time::{SystemTime, UNIX_EPOCH}};
 
     fn temp_log() -> PathBuf {
         let id = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
