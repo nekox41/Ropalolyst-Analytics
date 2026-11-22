@@ -42,7 +42,7 @@ impl MissionSession {
     /// Apply a normalized event to this session.
     /// Success/failure take precedence over a generic ending transition.
     pub fn apply(&mut self, event: GameEvent) {
-        match event.kind {
+        match &event.kind {
             EventKind::MissionSucceeded => {
                 self.status = MissionStatus::Succeeded;
                 self.ended_at = Some(event.timestamp);
@@ -67,5 +67,52 @@ impl MissionSession {
             MissionStatus::Failed => Some(MissionOutcome::Failure),
             MissionStatus::Aborted => Some(MissionOutcome::Abort),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Utc;
+
+    fn event(timestamp: f64, kind: EventKind) -> GameEvent {
+        GameEvent {
+            timestamp: LogTimestamp(timestamp),
+            kind,
+            source: "test fixture".into(),
+            observed_at: Utc::now(),
+        }
+    }
+
+    #[test]
+    fn success_closes_session_with_exact_log_duration() {
+        let start = event(42.312, EventKind::MissionStarted);
+        let mut session = MissionSession::new(start.timestamp, start);
+        session.apply(event(191.218, EventKind::MissionSucceeded));
+
+        assert_eq!(session.status, MissionStatus::Succeeded);
+        assert!((session.duration_seconds().unwrap() - 148.906).abs() < 0.000_001);
+        assert_eq!(session.events.len(), 2);
+    }
+
+    #[test]
+    fn generic_ending_marks_in_progress_session_as_aborted() {
+        let start = event(40.299, EventKind::MissionStarted);
+        let mut session = MissionSession::new(start.timestamp, start);
+        session.apply(event(124.448, EventKind::MissionEnding));
+
+        assert_eq!(session.status, MissionStatus::Aborted);
+        assert!((session.duration_seconds().unwrap() - 84.149).abs() < 0.000_001);
+    }
+
+    #[test]
+    fn success_is_not_overwritten_by_later_generic_ending() {
+        let start = event(1.0, EventKind::MissionStarted);
+        let mut session = MissionSession::new(start.timestamp, start);
+        session.apply(event(10.0, EventKind::MissionSucceeded));
+        session.apply(event(11.0, EventKind::MissionEnding));
+
+        assert_eq!(session.status, MissionStatus::Succeeded);
+        assert_eq!(session.duration_seconds(), Some(9.0));
     }
 }
