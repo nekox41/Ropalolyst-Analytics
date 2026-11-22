@@ -52,7 +52,7 @@ impl AppState {
                 Ok(store) => (Some(store), None),
                 Err(error) => (None, Some(error.to_string())),
             },
-            None => (None, Some("LOCALAPPDATA is not defined".to_owned())),
+            None => (None, Some("未找到 LOCALAPPDATA 环境变量".to_owned())),
         };
         Self {
             tailer,
