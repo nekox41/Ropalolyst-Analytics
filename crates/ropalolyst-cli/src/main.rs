@@ -18,7 +18,7 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph},
 };
 use ropalolyst_core::{
-    Analyzer, EventKind, GameEvent, LogTailer, RunStore, default_log_path, parse_log_line,
+    Analyzer, EventKind, GameEvent, LogTailer, RunStore, TransmissionKind, default_log_path, parse_log_line,
 };
 
 type AppTerminal = Terminal<CrosstermBackend<Stdout>>;
@@ -112,18 +112,16 @@ impl AppState {
 
     fn encounter(&self) -> (&'static str, Color) {
         let kind = self.analyzer.timeline.iter().rev().find_map(|event| match &event.kind {
-            EventKind::BossDefeatedCandidate => Some(("DEFEAT CANDIDATE", Color::Green)),
-            EventKind::BossCrashCinematicStopped { .. } => Some(("CRASH CINEMATIC END", Color::Yellow)),
-            EventKind::BossTowerResetStarted => Some(("TOWER RESET", Color::Yellow)),
-            EventKind::BossTowerResetEnded => Some(("TOWER RESET END", Color::Yellow)),
-            EventKind::BossCrashStarted { sequence } => Some((match sequence {
-                1 => "CRASH 1 / 3",
-                2 => "CRASH 2 / 3",
-                3 => "CRASH 3 / 3",
-                _ => "CRASH",
-            }, Color::Yellow)),
+            EventKind::BossTransmission { kind: TransmissionKind::LaserKill } => Some(("激光处决结果（候选）", Color::Green)),
+            EventKind::BossCrashCinematicStopped { tower_id } => Some((match tower_id { 1 => "电塔一撞击动画结束", 2 => "电塔二撞击动画结束", 3 => "电塔三撞击动画结束", _ => "撞击动画结束" }, Color::Yellow)),
+            EventKind::BossTowerResetStarted { .. } => Some(("电塔复位动画", Color::Yellow)),
+            EventKind::BossTowerResetEnded { .. } => Some(("电塔复位动画结束", Color::Yellow)),
+            EventKind::BossCrashStarted { tower_id } => Some((match tower_id { 1 => "撞击电塔一", 2 => "撞击电塔二", 3 => "撞击电塔三", _ => "撞击未知电塔" }, Color::Yellow)),
+            EventKind::BossLandingStarted { .. } => Some(("Boss 击杀后落地动画", Color::Green)),
+            EventKind::BossLandingEnded { .. } => Some(("Boss 落地动画结束", Color::Green)),
+            EventKind::BossTransmission { kind } => Some((transmission_label(*kind), Color::Cyan)),
             EventKind::BossFightStarted => Some(("BOSS FIGHT", Color::Magenta)),
-            EventKind::BossArenaIntroStarted => Some(("ARENA INTRO", Color::Cyan)),
+            EventKind::BossArenaIntroStarted => Some(("Boss 登场动画", Color::Cyan)),
             _ => None,
         });
         kind.unwrap_or(("NOT DETECTED", Color::Gray))
@@ -184,15 +182,15 @@ fn draw(frame: &mut Frame<'_>, app: &AppState) {
     let area = frame.area();
     let outer = Block::default()
         .title(Span::styled(
-            " ROPALOLYST ANALYTICS ",
+            " 蝠力使竞速分析 ",
             Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
         ))
         .title_bottom(
             Line::from(vec![
                 Span::styled(" Q ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
-                Span::raw(" quit  "),
+                Span::raw(" 退出  "),
                 Span::styled("● ", Style::default().fg(Color::Green)),
-                Span::raw(" live log monitor "),
+                Span::raw(" 实时日志监控 "),
             ])
             .alignment(Alignment::Right),
         )
@@ -220,11 +218,11 @@ fn draw(frame: &mut Frame<'_>, app: &AppState) {
 fn draw_header(frame: &mut Frame<'_>, area: Rect, app: &AppState) {
     let (encounter, color) = app.encounter();
     let line = Paragraph::new(Line::from(vec![
-        Span::styled("WARFRAME", Style::default().fg(Color::LightCyan).add_modifier(Modifier::BOLD)),
+        Span::styled("Warframe", Style::default().fg(Color::LightCyan).add_modifier(Modifier::BOLD)),
         Span::styled("  /  ", Style::default().fg(Color::DarkGray)),
-        Span::styled("JUPITER", Style::default().fg(Color::White)),
+        Span::styled("木星", Style::default().fg(Color::White)),
         Span::styled("  /  ", Style::default().fg(Color::DarkGray)),
-        Span::styled("THE ROPALOLYST", Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD)),
+        Span::styled("蝠力使", Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD)),
         Span::raw("                         "),
         Span::styled("● ", Style::default().fg(color)),
         Span::styled(encounter, Style::default().fg(color)),
@@ -239,12 +237,12 @@ fn draw_metrics(frame: &mut Frame<'_>, area: Rect, app: &AppState) {
         .constraints([Constraint::Percentage(34), Constraint::Percentage(33), Constraint::Percentage(33)])
         .split(area);
     let current = app.analyzer.active.as_ref()
-        .map(|session| format!("{:?}", session.status))
-        .unwrap_or_else(|| "IDLE".to_owned());
+        .map(|session| mission_status_label(session.status))
+        .unwrap_or_else(|| "等待任务".to_owned());
     let (encounter, color) = app.encounter();
-    metric(frame, columns[0], "CURRENT RUN", &current, "Mission session", Color::Gray);
-    metric(frame, columns[1], "RUN TIMER", &app.elapsed(), "Log clock since SS_STARTED", Color::Cyan);
-    metric(frame, columns[2], "ENCOUNTER", encounter, "Log signature detection", color);
+    metric(frame, columns[0], "当前任务", &current, "任务状态", Color::Gray);
+    metric(frame, columns[1], "任务计时", &app.elapsed(), "基于游戏日志时间戳", Color::Cyan);
+    metric(frame, columns[2], "Boss 阶段", encounter, "日志事件识别", color);
 }
 
 fn metric(frame: &mut Frame<'_>, area: Rect, title: &str, value: &str, hint: &str, color: Color) {
@@ -275,18 +273,18 @@ fn draw_main(frame: &mut Frame<'_>, area: Rect, app: &AppState) {
 
     let phase = app.analyzer.active.as_ref()
         .map(|session| format!("Mission active · {} events", session.events.len()))
-        .unwrap_or_else(|| "Waiting for SS_STARTED".to_owned());
+        .unwrap_or_else(|| "等待游戏任务开始".to_owned());
     frame.render_widget(
-        Paragraph::new(phase).style(Style::default().fg(Color::Gray)).block(panel("MISSION SESSION")),
+        Paragraph::new(phase).style(Style::default().fg(Color::Gray)).block(panel("任务信息")),
         left_rows[0],
     );
 
     let events: Vec<ListItem> = app.analyzer.timeline.iter().rev().take(12).map(|event| {
         let (label, color) = event_label(&event.kind);
         let confidence = match event.confidence {
-            ropalolyst_core::EventConfidence::Confirmed => "CONF",
-            ropalolyst_core::EventConfidence::StrongCandidate => "CAND",
-            ropalolyst_core::EventConfidence::Experimental => "EXPT",
+            ropalolyst_core::EventConfidence::Confirmed => "确认",
+            ropalolyst_core::EventConfidence::StrongCandidate => "候选",
+            ropalolyst_core::EventConfidence::Experimental => "实验",
         };
         ListItem::new(Line::from(vec![
             Span::styled(format!("{:>8.3}  ", event.timestamp.0), Style::default().fg(Color::DarkGray)),
@@ -295,9 +293,9 @@ fn draw_main(frame: &mut Frame<'_>, area: Rect, app: &AppState) {
         ]))
     }).collect();
     let event_list = if events.is_empty() {
-        vec![ListItem::new("No recognized events yet")]
+        vec![ListItem::new("尚未识别到事件")]
     } else { events };
-    frame.render_widget(List::new(event_list).block(panel("LIVE EVENT TIMELINE")), left_rows[1]);
+    frame.render_widget(List::new(event_list).block(panel("实时事件时间线")), left_rows[1]);
 
     let right_rows = Layout::default()
         .direction(Direction::Vertical)
@@ -307,12 +305,12 @@ fn draw_main(frame: &mut Frame<'_>, area: Rect, app: &AppState) {
     let status_color = if app.last_error.is_some() { Color::Red } else { Color::Green };
     let status_text = app.last_error.as_deref().unwrap_or(&app.log_status);
     let status = vec![
-        Line::from(vec![Span::styled("LOG SOURCE  ", Style::default().fg(Color::DarkGray)), Span::styled("EE.log", Style::default().fg(Color::White))]),
-        Line::from(vec![Span::styled("WATCHER     ", Style::default().fg(Color::DarkGray)), Span::styled("Polling", Style::default().fg(Color::Green))]),
-        Line::from(vec![Span::styled("FILE        ", Style::default().fg(Color::DarkGray)), Span::styled(status_text, Style::default().fg(status_color))]),
-        Line::from(vec![Span::styled("LAST EVENT  ", Style::default().fg(Color::DarkGray)), Span::styled(app.analyzer.last_event.as_ref().map(|e| format!("{:?}", e.kind)).unwrap_or_else(|| "—".to_owned()), Style::default().fg(Color::Gray))]),
+        Line::from(vec![Span::styled("日志文件  ", Style::default().fg(Color::DarkGray)), Span::styled("EE.log", Style::default().fg(Color::White))]),
+        Line::from(vec![Span::styled("监控状态     ", Style::default().fg(Color::DarkGray)), Span::styled("正在监控", Style::default().fg(Color::Green))]),
+        Line::from(vec![Span::styled("文件状态        ", Style::default().fg(Color::DarkGray)), Span::styled(status_text, Style::default().fg(status_color))]),
+        Line::from(vec![Span::styled("最近事件  ", Style::default().fg(Color::DarkGray)), Span::styled(app.analyzer.last_event.as_ref().map(|e| format!("{:?}", e.kind)).unwrap_or_else(|| "—".to_owned()), Style::default().fg(Color::Gray))]),
     ];
-    frame.render_widget(Paragraph::new(status).block(panel("PARSER STATUS")), right_rows[0]);
+    frame.render_widget(Paragraph::new(status).block(panel("日志解析状态")), right_rows[0]);
 
     let best = app.store.as_ref().and_then(|store| store.best_success_seconds().ok().flatten())
         .or_else(|| app.analyzer.best_success_seconds()).map(format_duration).unwrap_or_else(|| "—".to_owned());
@@ -320,28 +318,28 @@ fn draw_main(frame: &mut Frame<'_>, area: Rect, app: &AppState) {
         .or_else(|| app.analyzer.average_success_seconds()).map(format_duration).unwrap_or_else(|| "—".to_owned());
     let saved_count = app.store.as_ref().and_then(|store| store.completed_count().ok()).unwrap_or(0);
     let history = Paragraph::new(vec![
-        Line::from(Span::styled(format!("Saved runs      {saved_count}"), Style::default().fg(Color::White))),
-        Line::from(Span::styled(format!("Best time       {best}"), Style::default().fg(Color::Green))),
-        Line::from(Span::styled(format!("Average time    {average}"), Style::default().fg(Color::Cyan))),
+        Line::from(Span::styled(format!("已保存成绩      {saved_count}"), Style::default().fg(Color::White))),
+        Line::from(Span::styled(format!("最佳成绩       {best}"), Style::default().fg(Color::Green))),
+        Line::from(Span::styled(format!("平均成绩    {average}"), Style::default().fg(Color::Cyan))),
         Line::from(Span::styled(
-            app.store_error.as_deref().unwrap_or("SQLite history ready"),
+            app.store_error.as_deref().unwrap_or("本地成绩库已就绪"),
             Style::default().fg(if app.store_error.is_some() { Color::Red } else { Color::DarkGray }),
         )),
-    ]).block(panel("RUN STATISTICS"));
+    ]).block(panel("成绩统计"));
     frame.render_widget(history, right_rows[1]);
 }
 
 fn draw_footer(frame: &mut Frame<'_>, area: Rect, app: &AppState) {
-    let status = if app.last_error.is_some() { "LOG READ ERROR" } else { "CORE ONLINE" };
+    let status = if app.last_error.is_some() { "日志读取错误" } else { "核心运行中" };
     let color = if app.last_error.is_some() { Color::Red } else { Color::Green };
     let footer = Paragraph::new(Line::from(vec![
         Span::styled("● ", Style::default().fg(color)),
         Span::raw(status),
         Span::styled("   │   ", Style::default().fg(Color::DarkGray)),
-        Span::raw("AUTO-DISCOVER EE.log"),
+        Span::raw("自动定位 EE.log"),
         Span::styled("   │   ", Style::default().fg(Color::DarkGray)),
         Span::styled("Q", Style::default().fg(Color::Yellow)),
-        Span::raw(" quit"),
+        Span::raw(" 退出"),
     ]))
     .alignment(Alignment::Center)
     .block(Block::default().borders(Borders::TOP).border_style(Style::default().fg(Color::DarkGray)));
@@ -350,24 +348,44 @@ fn draw_footer(frame: &mut Frame<'_>, area: Rect, app: &AppState) {
 
 fn event_label(kind: &EventKind) -> (&'static str, Color) {
     match kind {
-        EventKind::MissionStarted => ("Mission started", Color::Green),
-        EventKind::MissionSucceeded => ("Mission succeeded", Color::Green),
-        EventKind::MissionFailed => ("Mission failed", Color::Red),
-        EventKind::MissionEnding => ("Mission ending / abort candidate", Color::Yellow),
-        EventKind::BossArenaIntroStarted => ("Boss arena intro", Color::Cyan),
-        EventKind::BossArenaIntroEnded => ("Boss arena intro ended", Color::Cyan),
-        EventKind::BossFightStarted => ("Boss fight started", Color::Magenta),
-        EventKind::BossCrashStarted { sequence } => (match sequence {
-            1 => "Crash sequence 1 started",
-            2 => "Crash sequence 2 started",
-            3 => "Crash sequence 3 started",
-            _ => "Crash sequence started",
-        }, Color::Yellow),
-        EventKind::BossCrashCinematicStopped { .. } => ("Crash cinematic stopped", Color::Yellow),
-        EventKind::BossTowerResetStarted => ("Tower reset cinematic started", Color::Yellow),
-        EventKind::BossTowerResetEnded => ("Tower reset cinematic stopped", Color::Yellow),
-        EventKind::BossDefeatedCandidate => ("Boss defeated candidate", Color::Green),
-        EventKind::Unknown => ("Unknown", Color::Gray),
+        EventKind::MissionStarted => ("任务开始", Color::Green),
+        EventKind::MissionSucceeded => ("任务成功", Color::Green),
+        EventKind::MissionFailed => ("任务失败", Color::Red),
+        EventKind::MissionEnding => ("任务结束（撤离/中止候选）", Color::Yellow),
+        EventKind::BossArenaIntroStarted => ("Boss 登场动画开始", Color::Cyan),
+        EventKind::BossArenaIntroEnded => ("Boss 登场动画结束", Color::Cyan),
+        EventKind::BossCrashStarted { tower_id } => (match tower_id { 1 => "撞击电塔一", 2 => "撞击电塔二", 3 => "撞击电塔三", _ => "撞击未知电塔" }, Color::Yellow),
+        EventKind::BossCrashCinematicStopped { tower_id } => (match tower_id { 1 => "电塔一撞击动画结束", 2 => "电塔二撞击动画结束", 3 => "电塔三撞击动画结束", _ => "撞击动画结束" }, Color::Yellow),
+        EventKind::BossTowerResetStarted { .. } => ("电塔复位动画开始", Color::Yellow),
+        EventKind::BossTowerResetEnded { .. } => ("电塔复位动画结束", Color::Yellow),
+        EventKind::BossLandingStarted { .. } => ("Boss 击杀后落地动画开始", Color::Green),
+        EventKind::BossLandingEnded { .. } => ("Boss 击杀后落地动画结束", Color::Green),
+        EventKind::BossTransmission { kind } => (transmission_label(*kind), Color::Cyan),
+        EventKind::Unknown => ("未知事件", Color::Gray),
+    }
+}
+
+fn mission_status_label(status: ropalolyst_core::MissionStatus) -> &'static str {
+    match status {
+        ropalolyst_core::MissionStatus::InProgress => "进行中",
+        ropalolyst_core::MissionStatus::Succeeded => "成功",
+        ropalolyst_core::MissionStatus::Failed => "失败",
+        ropalolyst_core::MissionStatus::Aborted => "已中止",
+    }
+}
+
+fn transmission_label(kind: TransmissionKind) -> &'static str {
+    match kind {
+        TransmissionKind::ShieldHint => "护盾提示（不代表破盾）",
+        TransmissionKind::FirstShieldDown => "首次破盾信号",
+        TransmissionKind::ConduitChargeReminder => "电塔充能提醒（非完成）",
+        TransmissionKind::WeakpointHint => "弱点提示（非永久计数）",
+        TransmissionKind::FinalWeakpointHint => "最后弱点提示",
+        TransmissionKind::FinalMountAttempt => "最后一轮骑乘尝试",
+        TransmissionKind::StunHint => "Boss 眩晕提示",
+        TransmissionKind::LaserHit => "平台激光命中结果",
+        TransmissionKind::LaserMiss => "平台激光未命中结果",
+        TransmissionKind::LaserKill => "平台激光处决结果（候选）",
     }
 }
 
