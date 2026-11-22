@@ -47,14 +47,7 @@ impl MissionSession {
                 // Ropalolyst logs can emit an early, non-terminal "Mission Succeeded"
                 // while the encounter is still running. Accept it only after the
                 // final laser-kill transmission has been received in this session.
-                let final_kill_confirmed = self.events.iter().any(|previous| {
-                    matches!(
-                        previous.kind,
-                        EventKind::BossTransmission {
-                            kind: crate::TransmissionKind::LaserKill
-                        }
-                    )
-                });
+                let final_kill_confirmed = self.has_final_kill_evidence();
                 if final_kill_confirmed {
                     self.status = MissionStatus::Succeeded;
                     self.ended_at = Some(event.timestamp);
@@ -71,6 +64,17 @@ impl MissionSession {
             _ => {}
         }
         self.events.push(event);
+    }
+
+    pub fn has_final_kill_evidence(&self) -> bool {
+        self.events.iter().any(|event| {
+            matches!(
+                event.kind,
+                EventKind::BossTransmission {
+                    kind: crate::TransmissionKind::LaserKill
+                }
+            )
+        })
     }
 
     pub fn outcome(&self) -> Option<MissionOutcome> {
