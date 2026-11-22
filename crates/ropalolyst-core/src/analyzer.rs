@@ -16,7 +16,7 @@ impl Analyzer {
             (self.active.as_ref(), &event.kind)
         {
             let cycle = session.events.iter().filter(|previous| {
-                matches!(previous.kind, EventKind::BossCrashStarted { .. })
+                matches!(&previous.kind, EventKind::BossCrashStarted { .. })
             }).count() as u8 + 1;
             event.kind = EventKind::BossCrashStarted { tower_id: *tower_id, cycle };
         }
