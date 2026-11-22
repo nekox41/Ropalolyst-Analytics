@@ -51,10 +51,6 @@ impl MissionSession {
                 self.status = MissionStatus::Failed;
                 self.ended_at = Some(event.timestamp);
             }
-            EventKind::MissionEnding if self.status == MissionStatus::InProgress => {
-                self.status = MissionStatus::Aborted;
-                self.ended_at = Some(event.timestamp);
-            }
             _ => {}
         }
         self.events.push(event);
@@ -97,13 +93,13 @@ mod tests {
     }
 
     #[test]
-    fn generic_ending_marks_in_progress_session_as_aborted() {
+    fn generic_ending_is_only_a_candidate_until_a_new_mission_starts() {
         let start = event(40.299, EventKind::MissionStarted);
         let mut session = MissionSession::new(start.timestamp, start);
         session.apply(event(124.448, EventKind::MissionEnding));
 
-        assert_eq!(session.status, MissionStatus::Aborted);
-        assert!((session.duration_seconds().unwrap() - 84.149).abs() < 0.000_001);
+        assert_eq!(session.status, MissionStatus::InProgress);
+        assert_eq!(session.duration_seconds(), None);
     }
 
     #[test]
