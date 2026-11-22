@@ -23,6 +23,28 @@ pub fn phase_splits(session: &MissionSession) -> Vec<PhaseSplit> {
         let label_key = match &event.kind {
             EventKind::BossArenaIntroStarted => Some(("run_to_arena", "跑图结束")),
             EventKind::BossArenaIntroEnded => Some(("arena_intro", "Boss 出场结束")),
+            EventKind::BossCrashCinematicStopped { tower_id } => {
+                let key = format!("crash_animation_end_tower_{tower_id}");
+                let label = format!("电塔 {tower_id} 撞击动画结束");
+                let cumulative = event.timestamp.0 - session.started_at.0;
+                let split = cumulative - previous;
+                if cumulative >= previous {
+                    result.push(PhaseSplit { key, label, cumulative_seconds: cumulative, split_seconds: split });
+                    previous = cumulative;
+                }
+                None
+            }
+            EventKind::BossTowerResetStarted { cinematic_id } => {
+                let key = format!("return_center_start_{cinematic_id}");
+                let label = "返回中央动画开始".to_owned();
+                let cumulative = event.timestamp.0 - session.started_at.0;
+                let split = cumulative - previous;
+                if cumulative >= previous {
+                    result.push(PhaseSplit { key, label, cumulative_seconds: cumulative, split_seconds: split });
+                    previous = cumulative;
+                }
+                None
+            }
             EventKind::BossCrashStarted { cycle, tower_id } => {
                 let key = format!("crash_{cycle}");
                 let label = format!("第 {cycle} 次撞塔（电塔 {tower_id}）");
@@ -48,6 +70,7 @@ pub fn phase_splits(session: &MissionSession) -> Vec<PhaseSplit> {
             }
             EventKind::BossTransmission { kind: crate::TransmissionKind::LaserKill } =>
                 Some(("laser_kill", "激光处决结果")),
+            EventKind::BossLandingStarted { .. } => Some(("landing_start", "处决后落地开始")),
             EventKind::BossLandingEnded { .. } => Some(("landing_end", "处决后落地结束")),
             EventKind::MissionSucceeded => Some(("mission_success", "任务成功")),
             _ => None,
@@ -101,19 +124,23 @@ mod tests {
         session.apply(event(120.0, EventKind::BossArenaIntroStarted));
         session.apply(event(135.0, EventKind::BossArenaIntroEnded));
         session.apply(event(180.0, EventKind::BossCrashStarted { tower_id: 2, cycle: 1 }));
+        session.apply(event(185.0, EventKind::BossCrashCinematicStopped { tower_id: 2 }));
+        session.apply(event(186.0, EventKind::BossTowerResetStarted { cinematic_id: 0 }));
         session.apply(event(192.0, EventKind::BossTowerResetEnded { cinematic_id: 0 }));
         session.apply(event(240.0, EventKind::MissionSucceeded));
 
         let splits = phase_splits(&session);
-        assert_eq!(splits.len(), 5);
+        assert_eq!(splits.len(), 7);
         assert_eq!(splits[0].label, "跑图结束");
         assert_eq!(splits[0].cumulative_seconds, 20.0);
         assert_eq!(splits[0].split_seconds, 20.0);
         assert_eq!(splits[2].label, "第 1 次撞塔（电塔 2）");
         assert_eq!(splits[2].cumulative_seconds, 80.0);
         assert_eq!(splits[2].split_seconds, 45.0);
-        assert_eq!(splits[3].split_seconds, 12.0);
-        assert_eq!(splits[4].split_seconds, 48.0);
+        assert_eq!(splits[3].split_seconds, 5.0);
+        assert_eq!(splits[4].split_seconds, 1.0);
+        assert_eq!(splits[5].split_seconds, 6.0);
+        assert_eq!(splits[6].split_seconds, 48.0);
     }
 
     #[test]
