@@ -88,7 +88,7 @@ pub fn average_phase_splits(sessions: &[MissionSession]) -> Vec<(String, f64, us
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{EventConfidence, GameEvent, LogTimestamp, TransmissionKind};
+    use crate::{EventConfidence, GameEvent, LogTimestamp};
 
     fn event(at: f64, kind: EventKind) -> GameEvent {
         GameEvent::new(LogTimestamp(at), kind, EventConfidence::Confirmed, "fixture")
