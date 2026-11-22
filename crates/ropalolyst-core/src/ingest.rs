@@ -25,6 +25,15 @@ impl LogTailer {
         Self { path: path.into(), offset: 0, pending: Vec::new() }
     }
 
+    /// Start following from the current end if a log already exists. This avoids
+    /// replaying and double-counting old missions when the analyzer is restarted.
+    /// If the game creates EE.log after startup, reading naturally begins at byte zero.
+    pub fn new_from_end(path: impl Into<PathBuf>) -> Self {
+        let path = path.into();
+        let offset = fs::metadata(&path).map(|metadata| metadata.len()).unwrap_or(0);
+        Self { path, offset, pending: Vec::new() }
+    }
+
     pub fn path(&self) -> &Path {
         &self.path
     }
