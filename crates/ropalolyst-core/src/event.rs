@@ -21,6 +21,7 @@ pub enum EventKind {
     MissionEnding,
     BossArenaIntroStarted,
     BossArenaIntroEnded,
+    BossArenaIntroEnded,
     BossFightStarted,
     BossCrashStarted { sequence: u8 },
     BossCrashCinematicStopped { sequence: u8 },
