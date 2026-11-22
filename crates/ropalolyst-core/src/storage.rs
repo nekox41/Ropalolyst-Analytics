@@ -21,6 +21,8 @@ impl RunStore {
         connection.execute_batch(
             "PRAGMA journal_mode=WAL;
              CREATE TABLE IF NOT EXISTS runs (
+                log_generation TEXT NOT NULL,
+
                 id INTEGER PRIMARY KEY,
                 started_at REAL NOT NULL,
                 ended_at REAL,
@@ -28,12 +30,13 @@ impl RunStore {
                 duration_seconds REAL,
                 payload_json TEXT NOT NULL
              );
-             CREATE INDEX IF NOT EXISTS idx_runs_status_started ON runs(status, started_at);",
+             CREATE INDEX IF NOT EXISTS idx_runs_status_started ON runs(status, started_at);
+             CREATE UNIQUE INDEX IF NOT EXISTS idx_runs_generation_start ON runs(log_generation, started_at);",
         )?;
         Ok(Self { connection })
     }
 
-    pub fn save(&self, session: &MissionSession) -> rusqlite::Result<()> {
+    pub fn save(&self, session: &MissionSession, log_generation: &str) -> rusqlite::Result<()> {
         let mut sanitized = session.clone();
         for event in &mut sanitized.events {
             event.source.clear();
@@ -41,9 +44,10 @@ impl RunStore {
         let payload = serde_json::to_string(&sanitized)
             .map_err(|error| rusqlite::Error::ToSqlConversionFailure(Box::new(error)))?;
         self.connection.execute(
-            "INSERT INTO runs (started_at, ended_at, status, duration_seconds, payload_json)
-             VALUES (?1, ?2, ?3, ?4, ?5)",
+            "INSERT OR IGNORE INTO runs (log_generation, started_at, ended_at, status, duration_seconds, payload_json)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
             params![
+                log_generation,
                 session.started_at.0,
                 session.ended_at.map(|timestamp| timestamp.0),
                 format!("{:?}", session.status),
@@ -86,7 +90,7 @@ mod tests {
         let start = GameEvent::new(LogTimestamp(2.0), EventKind::MissionStarted, EventConfidence::Confirmed, "sanitized");
         let mut session = MissionSession::new(start.timestamp, start);
         session.apply(GameEvent::new(LogTimestamp(12.5), EventKind::MissionSucceeded, EventConfidence::Confirmed, "sanitized"));
-        store.save(&session).unwrap();
+        store.save(&session, "test-generation").unwrap();
         assert_eq!(store.completed_count().unwrap(), 1);
     }
 }
