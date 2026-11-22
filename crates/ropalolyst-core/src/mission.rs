@@ -79,6 +79,7 @@ mod tests {
         GameEvent {
             timestamp: LogTimestamp(timestamp),
             kind,
+            confidence: crate::EventConfidence::Confirmed,
             source: "test fixture".into(),
             observed_at: Utc::now(),
         }
