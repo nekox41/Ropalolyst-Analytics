@@ -121,7 +121,7 @@ mod tests {
         for (instance, tower_id) in [(0, 1), (1, 2), (2, 3)] {
             let line = format!("98.866 Sys [Info]: Cinematic /Layer8/Layer9/CrashCinematic{instance} Start, 1 scene(s), first: /Lotus/Animations/Sentient/Ropalolyst/Riding/TowerCrashA_cin.fbx");
             let event = parse_log_line(&line).unwrap();
-            assert_eq!(event.kind, EventKind::BossCrashStarted { tower_id });
+            assert_eq!(event.kind, EventKind::BossCrashStarted { tower_id, cycle: 0 });
         }
     }
 
