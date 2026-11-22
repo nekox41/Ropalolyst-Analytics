@@ -1,6 +1,5 @@
 use std::{
     io::{self, Stdout},
-    time::{Duration, Instant},
 };
 
 use anyhow::Result;
@@ -14,9 +13,8 @@ use ratatui::{
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
-    symbols,
     text::{Line, Span},
-    widgets::{Block, Borders, Gauge, List, ListItem, Paragraph, Sparkline},
+    widgets::{Block, Borders, List, ListItem, Paragraph},
 };
 
 type AppTerminal = Terminal<CrosstermBackend<Stdout>>;
@@ -53,9 +51,8 @@ fn restore_terminal(terminal: &mut AppTerminal) -> Result<()> {
 }
 
 fn run_app(terminal: &mut AppTerminal) -> Result<()> {
-    let started = Instant::now();
     loop {
-        terminal.draw(|frame| draw(frame, started.elapsed()))?;
+        terminal.draw(draw)?;
 
         if event::poll(Duration::from_millis(100))? {
             if let Event::Key(key) = event::read()? {
@@ -70,7 +67,7 @@ fn run_app(terminal: &mut AppTerminal) -> Result<()> {
     Ok(())
 }
 
-fn draw(frame: &mut Frame<'_>, uptime: Duration) {
+fn draw(frame: &mut Frame<'_>) {
     let area = frame.area();
     let outer = Block::default()
         .title(Span::styled(
@@ -99,7 +96,7 @@ fn draw(frame: &mut Frame<'_>, uptime: Duration) {
         .split(inner);
 
     draw_header(frame, rows[0]);
-    draw_metrics(frame, rows[1], uptime);
+    draw_metrics(frame, rows[1]);
     draw_main(frame, rows[2]);
     draw_footer(frame, rows[3]);
 }
@@ -119,14 +116,14 @@ fn draw_header(frame: &mut Frame<'_>, area: Rect) {
     frame.render_widget(line, area);
 }
 
-fn draw_metrics(frame: &mut Frame<'_>, area: Rect, uptime: Duration) {
+fn draw_metrics(frame: &mut Frame<'_>, area: Rect) {
     let columns = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(34), Constraint::Percentage(33), Constraint::Percentage(33)])
         .split(area);
 
     metric(frame, columns[0], "CURRENT RUN", "—", "No active mission", Color::Gray);
-    metric(frame, columns[1], "ELAPSED", &format_duration(uptime), "Timer starts at SS_STARTED", Color::Cyan);
+    metric(frame, columns[1], "RUN TIMER", "00:00.000", "Arms when SS_STARTED is detected", Color::Cyan);
     metric(frame, columns[2], "ENCOUNTER", "STANDBY", "Ropalolyst not detected", Color::Yellow);
 }
 
@@ -230,18 +227,12 @@ fn draw_main(frame: &mut Frame<'_>, area: Rect) {
     ];
     frame.render_widget(Paragraph::new(status).block(panel("PARSER STATUS")), right_rows[0]);
 
-    let chart = Sparkline::default()
-        .block(panel("RECENT RUN PACE"))
-        .data(&[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-        .max(10)
-        .style(Style::default().fg(Color::DarkGray))
-        .bar_set(symbols::bar::NINE_LEVELS);
-    frame.render_widget(chart, right_rows[1]);
-
-    let _ = Gauge::default()
-        .block(panel("PHASE COMPLETION"))
-        .gauge_style(Style::default().fg(Color::Cyan))
-        .ratio(0.0);
+    let history = Paragraph::new(vec![
+        Line::from(Span::styled("No completed runs yet", Style::default().fg(Color::Gray))),
+        Line::from(Span::styled("Your best time and average splits", Style::default().fg(Color::DarkGray))),
+        Line::from(Span::styled("will appear here.", Style::default().fg(Color::DarkGray))),
+    ]).block(panel("RECENT RUNS"));
+    frame.render_widget(history, right_rows[1]);
 }
 
 fn draw_footer(frame: &mut Frame<'_>, area: Rect) {
@@ -270,10 +261,3 @@ fn panel(title: &'static str) -> Block<'static> {
         .border_style(Style::default().fg(Color::DarkGray))
 }
 
-fn format_duration(duration: Duration) -> String {
-    let total_ms = duration.as_millis();
-    let minutes = total_ms / 60_000;
-    let seconds = (total_ms / 1_000) % 60;
-    let millis = total_ms % 1_000;
-    format!("{minutes:02}:{seconds:02}.{millis:03}")
-}
