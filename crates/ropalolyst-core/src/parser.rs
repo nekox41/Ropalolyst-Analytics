@@ -75,7 +75,7 @@ fn classify(line: &str) -> Option<(EventKind, EventConfidence)> {
     {
         // CrashCinematic0/1/2 对应地图中的电塔 1/2/3；这是塔 ID，不是撞塔轮次。
         let tower_id = instance_id(line, "CrashCinematic")?.checked_add(1)?;
-        Some((EventKind::BossCrashStarted { tower_id }, EventConfidence::StrongCandidate))
+        Some((EventKind::BossCrashStarted { tower_id, cycle: 0 }, EventConfidence::StrongCandidate))
     } else if line.contains("Cinematic ") && line.contains(" Stop")
         && line.contains("CrashCinematic")
     {
