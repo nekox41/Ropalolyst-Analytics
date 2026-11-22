@@ -9,6 +9,7 @@ pub mod ingest;
 pub mod mission;
 pub mod parser;
 pub mod storage;
+pub mod splits;
 
 pub use analyzer::Analyzer;
 pub use event::{EventConfidence, EventKind, GameEvent, LogTimestamp, TransmissionKind};
@@ -16,3 +17,4 @@ pub use ingest::{LogTailer, default_log_path};
 pub use mission::{MissionOutcome, MissionSession, MissionStatus};
 pub use parser::parse_log_line;
 pub use storage::RunStore;
+pub use splits::{PhaseSplit, average_phase_splits, phase_splits};
