@@ -1,0 +1,16 @@
+[package]
+name = "ropalolyst-desktop"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "ropalolyst-analytics"
+path = "src/main.rs"
+
+[dependencies]
+eframe.workspace = true
+egui.workspace = true
+ropalolyst-core = { path = "../ropalolyst-core" }
+tracing-subscriber.workspace = true
