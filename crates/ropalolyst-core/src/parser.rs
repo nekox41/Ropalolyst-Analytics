@@ -74,39 +74,39 @@ mod tests {
 
     #[test]
     fn parses_confirmed_mission_start() {
-        let event = parse_log_line("182.782 Net [Info]: GameRulesImpl - changing state from SS_WAITING_FOR_PLAYERS to SS_STARTED").unwrap();
-        assert_eq!(event.timestamp, LogTimestamp(182.782));
+        let event = parse_log_line("42.312 Net [Info]: GameRulesImpl - changing state from SS_WAITING_FOR_PLAYERS to SS_STARTED").unwrap();
+        assert_eq!(event.timestamp, LogTimestamp(42.312));
         assert_eq!(event.kind, EventKind::MissionStarted);
         assert_eq!(event.confidence, EventConfidence::Confirmed);
     }
 
     #[test]
     fn parses_real_roparo_tower_crash_cinematics() {
-        let first = parse_log_line("273.565 Sys [Info]: Cinematic /Layer8/Layer9/CrashCinematic0 Start, 1 scene(s), first: /Lotus/Animations/Sentient/Ropalolyst/Riding/TowerCrashA_cin.fbx").unwrap();
+        let first = parse_log_line("98.866 Sys [Info]: Cinematic /Layer8/Layer9/CrashCinematic0 Start, 1 scene(s), first: /Lotus/Animations/Sentient/Ropalolyst/Riding/TowerCrashA_cin.fbx").unwrap();
         assert_eq!(first.kind, EventKind::BossCrashStarted { sequence: 1 });
-        let second = parse_log_line("309.369 Sys [Info]: Cinematic /Layer8/Layer9/CrashCinematic1 Start, 1 scene(s), first: /Lotus/Animations/Sentient/Ropalolyst/Riding/TowerCrashA_cin.fbx").unwrap();
+        let second = parse_log_line("129.554 Sys [Info]: Cinematic /Layer8/Layer9/CrashCinematic1 Start, 1 scene(s), first: /Lotus/Animations/Sentient/Ropalolyst/Riding/TowerCrashA_cin.fbx").unwrap();
         assert_eq!(second.kind, EventKind::BossCrashStarted { sequence: 2 });
-        let third = parse_log_line("340.785 Sys [Info]: Cinematic /Layer8/Layer9/CrashCinematic2 Start, 1 scene(s), first: /Lotus/Animations/Sentient/Ropalolyst/Riding/TowerCrashA_cin.fbx").unwrap();
+        let third = parse_log_line("159.200 Sys [Info]: Cinematic /Layer8/Layer9/CrashCinematic2 Start, 1 scene(s), first: /Lotus/Animations/Sentient/Ropalolyst/Riding/TowerCrashA_cin.fbx").unwrap();
         assert_eq!(third.kind, EventKind::BossCrashStarted { sequence: 3 });
     }
 
     #[test]
     fn parses_tower_reset_and_crash_stop() {
-        let stopped = parse_log_line("276.238 Sys [Info]: Cinematic /Layer8/Layer9/CrashCinematic0 Stop(stopFromSkipped=0)").unwrap();
+        let stopped = parse_log_line("101.537 Sys [Info]: Cinematic /Layer8/Layer9/CrashCinematic0 Stop(stopFromSkipped=0)").unwrap();
         assert_eq!(stopped.kind, EventKind::BossCrashCinematicStopped { sequence: 1 });
-        let reset = parse_log_line("276.243 Sys [Info]: Cinematic /Layer8/Layer9/ResetCinematic0 Start, 1 scene(s), first: /Lotus/Animations/Sentient/Ropalolyst/Riding/TowerCrashEnd_cin.fbx").unwrap();
+        let reset = parse_log_line("101.540 Sys [Info]: Cinematic /Layer8/Layer9/ResetCinematic0 Start, 1 scene(s), first: /Lotus/Animations/Sentient/Ropalolyst/Riding/TowerCrashEnd_cin.fbx").unwrap();
         assert_eq!(reset.kind, EventKind::BossTowerResetStarted);
-        let reset_end = parse_log_line("281.279 Sys [Info]: Cinematic /Layer8/Layer9/ResetCinematic0 Stop(stopFromSkipped=0)").unwrap();
+        let reset_end = parse_log_line("106.574 Sys [Info]: Cinematic /Layer8/Layer9/ResetCinematic0 Stop(stopFromSkipped=0)").unwrap();
         assert_eq!(reset_end.kind, EventKind::BossTowerResetEnded);
     }
 
     #[test]
     fn parses_boss_intro_and_defeat_transmission() {
-        let intro = parse_log_line("213.105 Sys [Info]: Cinematic /Layer8/Layer9/Prefab1/LotusCinematic21 Start, 1 scene(s), first: /Lotus/Animations/Cinematics/BossIntro/RopalolystGasArenaIntro01_cin.fbx").unwrap();
+        let intro = parse_log_line("69.831 Sys [Info]: Cinematic /Layer8/Layer9/Prefab1/LotusCinematic21 Start, 1 scene(s), first: /Lotus/Animations/Cinematics/BossIntro/RopalolystGasArenaIntro01_cin.fbx").unwrap();
         assert_eq!(intro.kind, EventKind::BossArenaIntroStarted);
         let intro_end = parse_log_line("87.399 Sys [Info]: Cinematic /Layer8/Layer9/Prefab1/LotusCinematic21 Stop(stopFromSkipped=0)").unwrap();
         assert_eq!(intro_end.kind, EventKind::BossArenaIntroEnded);
-        let defeat = parse_log_line("353.647 Sys [Info]: TRANSMISSION: Received Transmission: /Lotus/Sounds/Dialog/GasCityRopaFight/Natah/DRopaKillLaserNatah").unwrap();
+        let defeat = parse_log_line("172.014 Sys [Info]: TRANSMISSION: Received Transmission: /Lotus/Sounds/Dialog/GasCityRopaFight/Natah/DRopaKillLaserNatah").unwrap();
         assert_eq!(defeat.kind, EventKind::BossDefeatedCandidate);
         assert_eq!(defeat.confidence, EventConfidence::Experimental);
     }
@@ -115,6 +115,8 @@ mod tests {
     fn ignores_unrecognized_or_timestamp_free_lines() {
         assert!(parse_log_line("this line has no timestamp SS_STARTED").is_none());
         assert!(parse_log_line("12.0 unrelated diagnostic").is_none());
+        assert!(parse_log_line("208.392 Net [Info]: GameRulesImpl - changing state from SS_STARTED to SS_ENDING").unwrap().kind != EventKind::MissionStarted);
+        assert!(parse_log_line("189.223 Sys [Info]: Cinematic /Layer8/Layer9/ResetCinematic1 Stop(stopFromSkipped=0)").is_none());
         assert!(parse_log_line("181.583 Net [Info]: 1 /Lotus/Types/Enemies/Sentients/Ropalolyst/CrashCinematic").is_none());
     }
 }
