@@ -40,7 +40,7 @@ Ropalolyst Analytics 自动监控 Warframe 日志，识别蝠力使任务中的�
 默认日志位置：
 
 ```text
-%LOCALAPPDATA%\\Warframe\\EE.log
+%LOCALAPPDATA%\Warframe\EE.log
 ```
 
 成绩数据库 `ropalolyst-analytics.sqlite3` 保存在日志文件所在目录。
