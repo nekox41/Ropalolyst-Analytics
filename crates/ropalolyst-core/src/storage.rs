@@ -30,8 +30,22 @@ impl RunStore {
                 duration_seconds REAL,
                 payload_json TEXT NOT NULL
              );
-             CREATE INDEX IF NOT EXISTS idx_runs_status_started ON runs(status, started_at);
-             CREATE UNIQUE INDEX IF NOT EXISTS idx_runs_generation_start ON runs(log_generation, started_at);",
+             CREATE INDEX IF NOT EXISTS idx_runs_status_started ON runs(status, started_at);",
+        )?;
+        let has_generation: bool = {
+            let mut statement = connection.prepare("PRAGMA table_info(runs)")?;
+            let columns = statement.query_map([], |row| row.get::<_, String>(1))?;
+            columns.filter_map(Result::ok).any(|name| name == "log_generation")
+        };
+        if !has_generation {
+            connection.execute(
+                "ALTER TABLE runs ADD COLUMN log_generation TEXT NOT NULL DEFAULT 'legacy'",
+                [],
+            )?;
+        }
+        connection.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_runs_generation_start ON runs(log_generation, started_at)",
+            [],
         )?;
         Ok(Self { connection })
     }
