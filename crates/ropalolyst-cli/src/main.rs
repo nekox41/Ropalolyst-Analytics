@@ -18,7 +18,7 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph},
 };
 use ropalolyst_core::{
-    Analyzer, EventKind, GameEvent, LogTailer, RunStore, TransmissionKind, default_log_path, parse_log_line,
+    Analyzer, EventKind, GameEvent, LogTailer, RunStore, TransmissionKind, average_phase_splits, default_log_path, parse_log_line, phase_splits,
 };
 
 type AppTerminal = Terminal<CrosstermBackend<Stdout>>;
@@ -280,36 +280,42 @@ fn draw_main(frame: &mut Frame<'_>, area: Rect, app: &AppState) {
         .constraints([Constraint::Percentage(62), Constraint::Percentage(38)])
         .split(area);
 
-    let left_rows = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Length(3), Constraint::Min(5)])
-        .split(columns[0]);
-
-    let phase = app.analyzer.active.as_ref()
-        .map(|session| format!("Mission active · {} events", session.events.len()))
-        .unwrap_or_else(|| "等待游戏任务开始".to_owned());
-    frame.render_widget(
-        Paragraph::new(phase).style(Style::default().fg(Color::Gray)).block(panel("任务信息")),
-        left_rows[0],
-    );
-
-    let events: Vec<ListItem> = app.analyzer.timeline.iter().rev().take(12).map(|event| {
-        let (label, color) = event_label(&event.kind);
-        let confidence = match event.confidence {
-            ropalolyst_core::EventConfidence::Confirmed => "确认",
-            ropalolyst_core::EventConfidence::StrongCandidate => "候选",
-            ropalolyst_core::EventConfidence::Experimental => "实验",
+    let current_session = app.analyzer.active.as_ref()
+        .or_else(|| app.analyzer.completed.last());
+    let splits = current_session.map(phase_splits).unwrap_or_default();
+    let history_sessions = app.store.as_ref()
+        .and_then(|store| store.successful_sessions().ok())
+        .unwrap_or_else(|| app.analyzer.completed.clone());
+    let averages = average_phase_splits(&history_sessions);
+    let mut split_rows = vec![ListItem::new(Line::from(vec![
+        Span::styled(format!("{:<25}", "阶段"), Style::default().fg(Color::DarkGray).add_modifier(Modifier::BOLD)),
+        Span::styled(format!("{:>11}", "累计"), Style::default().fg(Color::DarkGray).add_modifier(Modifier::BOLD)),
+        Span::styled(format!("{:>11}", "阶段耗时"), Style::default().fg(Color::DarkGray).add_modifier(Modifier::BOLD)),
+        Span::styled(format!("{:>11}", "较平均"), Style::default().fg(Color::DarkGray).add_modifier(Modifier::BOLD)),
+    ]))];
+    for split in &splits {
+        let average = averages.iter().find(|(key, _, _)| key == &split.key);
+        let (delta_text, delta_color) = match average {
+            Some((_, average_seconds, _)) => {
+                let delta = split.split_seconds - average_seconds;
+                (format!("{delta:+.3}s"), if delta <= 0.0 { Color::Green } else { Color::Red })
+            }
+            None => ("—".to_owned(), Color::DarkGray),
         };
-        ListItem::new(Line::from(vec![
-            Span::styled(format!("{:>8.3}  ", event.timestamp.0), Style::default().fg(Color::DarkGray)),
-            Span::styled(format!("{confidence}  "), Style::default().fg(Color::Yellow)),
-            Span::styled(label, Style::default().fg(color)),
-        ]))
-    }).collect();
-    let event_list = if events.is_empty() {
-        vec![ListItem::new("尚未识别到事件")]
-    } else { events };
-    frame.render_widget(List::new(event_list).block(panel("实时事件时间线")), left_rows[1]);
+        split_rows.push(ListItem::new(Line::from(vec![
+            Span::styled(format!("{:<25}", split.label), Style::default().fg(Color::White)),
+            Span::styled(format!("{:>11}", format_duration(split.cumulative_seconds)), Style::default().fg(Color::Cyan)),
+            Span::styled(format!("{:>11}", format_duration(split.split_seconds)), Style::default().fg(Color::Yellow)),
+            Span::styled(format!("{:>11}", delta_text), Style::default().fg(delta_color)),
+        ])));
+    }
+    if splits.is_empty() {
+        split_rows.push(ListItem::new("等待可识别的阶段标记…"));
+    }
+    frame.render_widget(
+        List::new(split_rows).block(panel("竞速分段 · 累计 / 阶段耗时 / 较历史平均")),
+        columns[0],
+    );
 
     let right_rows = Layout::default()
         .direction(Direction::Vertical)
