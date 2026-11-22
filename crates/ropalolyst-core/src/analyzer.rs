@@ -10,7 +10,16 @@ pub struct Analyzer {
 }
 
 impl Analyzer {
-    pub fn ingest(&mut self, event: GameEvent) {
+    pub fn ingest(&mut self, mut event: GameEvent) {
+        // 轮次由本次任务中实际出现的顺序决定；塔 ID 由地图 cinematic 实例决定。
+        if let (Some(session), EventKind::BossCrashStarted { tower_id, .. }) =
+            (self.active.as_ref(), &event.kind)
+        {
+            let cycle = session.events.iter().filter(|previous| {
+                matches!(previous.kind, EventKind::BossCrashStarted { .. })
+            }).count() as u8 + 1;
+            event.kind = EventKind::BossCrashStarted { tower_id: *tower_id, cycle };
+        }
         if event.kind == EventKind::MissionStarted {
             if let Some(mut previous) = self.active.take() {
                 if previous.status == MissionStatus::InProgress {
@@ -69,6 +78,17 @@ mod tests {
         assert_eq!(analyzer.completed.len(), 1);
         assert_eq!(analyzer.completed[0].status, MissionStatus::Aborted);
         assert_eq!(analyzer.active.as_ref().unwrap().started_at, LogTimestamp(5.0));
+    }
+
+    #[test]
+    fn crash_cycle_uses_play_order_and_keeps_tower_identity() {
+        let mut analyzer = Analyzer::default();
+        analyzer.ingest(event(1.0, EventKind::MissionStarted));
+        analyzer.ingest(event(2.0, EventKind::BossCrashStarted { tower_id: 3, cycle: 0 }));
+        analyzer.ingest(event(3.0, EventKind::BossCrashStarted { tower_id: 1, cycle: 0 }));
+        let session = analyzer.active.as_ref().unwrap();
+        assert_eq!(session.events[1].kind, EventKind::BossCrashStarted { tower_id: 3, cycle: 1 });
+        assert_eq!(session.events[2].kind, EventKind::BossCrashStarted { tower_id: 1, cycle: 2 });
     }
 
     #[test]
