@@ -9,11 +9,12 @@ The first release is a **console application only**. It uses a polished terminal
 - Auto-discover `%LOCALAPPDATA%\\Warframe\\EE.log` for the current Windows user.
 - Incrementally read complete log lines and recover from truncation.
 - Identify mission starts, success/failure boundaries, and split repeated sessions.
-- Display a live timer, recognized event timeline, log watcher status, and confidence labels.
+- Display a live log-clock timer, recognized event timeline, log watcher status, and confidence labels.
+- Distinguish the Ropalolyst arena intro from the three tower crash/reset cycles.
 - Persist completed mission sessions in a local SQLite database and calculate best/average times.
 - Ship as a standalone Windows x64 executable.
 
-Ropalolyst cinematic/defeat signatures are currently surfaced as candidates, not authoritative phase transitions. Their exact semantics require validation against sanitized logs from multiple real runs before phase timing is considered release-grade.
+The parser recognizes the arena intro, three `CrashCinematic` tower impacts, their `TowerCrashEnd` reset cinematics, and the mission success boundary. The log clock is used for all elapsed-time calculations (never the analyzer process start time). Dialogue cues remain candidates only; shield depletion, Synovia destruction, terminal activation, and extraction arrival are not claimed as precisely detected until their signatures are validated.
 
 ## Technology
 
