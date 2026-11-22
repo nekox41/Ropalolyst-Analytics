@@ -21,13 +21,13 @@ fn cinematic_index(line: &str, prefix: &str) -> Option<u8> {
 }
 
 fn classify(line: &str) -> Option<(EventKind, EventConfidence)> {
-    if line.contains("SS_STARTED") {
+    if line.contains("changing state from ") && line.contains(" to SS_STARTED") {
         Some((EventKind::MissionStarted, EventConfidence::Confirmed))
     } else if line.contains("Mission Succeeded") {
         Some((EventKind::MissionSucceeded, EventConfidence::Confirmed))
     } else if line.contains("Mission Failed") {
         Some((EventKind::MissionFailed, EventConfidence::StrongCandidate))
-    } else if line.contains("SS_ENDING") {
+    } else if line.contains("changing state from SS_STARTED to SS_ENDING") {
         Some((EventKind::MissionEnding, EventConfidence::StrongCandidate))
     } else if line.contains("Cinematic ") && line.contains(" Start")
         && line.contains("RopalolystGasArenaIntro01_cin.fbx")
@@ -43,12 +43,16 @@ fn classify(line: &str) -> Option<(EventKind, EventConfidence)> {
     {
         let sequence = cinematic_index(line, "CrashCinematic").map(|n| n.saturating_add(1)).unwrap_or(0);
         Some((EventKind::BossCrashCinematicStopped { sequence }, EventConfidence::StrongCandidate))
+    } else if line.contains("Cinematic ") && line.contains(" Stop")
+        && line.contains("LotusCinematic21")
+    {
+        Some((EventKind::BossArenaIntroEnded, EventConfidence::StrongCandidate))
     } else if line.contains("Cinematic ") && line.contains(" Start")
         && line.contains("TowerCrashEnd_cin.fbx")
     {
         Some((EventKind::BossTowerResetStarted, EventConfidence::StrongCandidate))
     } else if line.contains("Cinematic ") && line.contains(" Stop")
-        && line.contains("ResetCinematic")
+        && line.contains("ResetCinematic") && !line.contains("ResetCinematic1")
     {
         Some((EventKind::BossTowerResetEnded, EventConfidence::StrongCandidate))
     } else if line.contains("DRopaKillLaserNatah") {
@@ -61,6 +65,12 @@ fn classify(line: &str) -> Option<(EventKind, EventConfidence)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn mission_end_transition_is_not_another_start() {
+        let event = parse_log_line("208.392 Net [Info]: GameRulesImpl - changing state from SS_STARTED to SS_ENDING").unwrap();
+        assert_eq!(event.kind, EventKind::MissionEnding);
+    }
 
     #[test]
     fn parses_confirmed_mission_start() {
@@ -94,6 +104,8 @@ mod tests {
     fn parses_boss_intro_and_defeat_transmission() {
         let intro = parse_log_line("213.105 Sys [Info]: Cinematic /Layer8/Layer9/Prefab1/LotusCinematic21 Start, 1 scene(s), first: /Lotus/Animations/Cinematics/BossIntro/RopalolystGasArenaIntro01_cin.fbx").unwrap();
         assert_eq!(intro.kind, EventKind::BossArenaIntroStarted);
+        let intro_end = parse_log_line("87.399 Sys [Info]: Cinematic /Layer8/Layer9/Prefab1/LotusCinematic21 Stop(stopFromSkipped=0)").unwrap();
+        assert_eq!(intro_end.kind, EventKind::BossArenaIntroEnded);
         let defeat = parse_log_line("353.647 Sys [Info]: TRANSMISSION: Received Transmission: /Lotus/Sounds/Dialog/GasCityRopaFight/Natah/DRopaKillLaserNatah").unwrap();
         assert_eq!(defeat.kind, EventKind::BossDefeatedCandidate);
         assert_eq!(defeat.confidence, EventConfidence::Experimental);
