@@ -18,7 +18,7 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph},
 };
 use ropalolyst_core::{
-    Analyzer, EventKind, GameEvent, LogTailer, default_log_path, parse_log_line,
+    Analyzer, EventKind, GameEvent, LogTailer, RunStore, default_log_path, parse_log_line,
 };
 
 type AppTerminal = Terminal<CrosstermBackend<Stdout>>;
@@ -29,6 +29,8 @@ struct AppState {
     analyzer: Analyzer,
     run_started: Option<Instant>,
     last_error: Option<String>,
+    store: Option<RunStore>,
+    store_error: Option<String>,
 }
 
 impl AppState {
@@ -45,12 +47,22 @@ impl AppState {
             }
             None => (None, "LOCALAPPDATA is not defined".to_owned()),
         };
+        let store_path = default_log_path().map(|path| path.with_file_name("ropalolyst-analytics.sqlite3"));
+        let (store, store_error) = match store_path {
+            Some(path) => match RunStore::open(path) {
+                Ok(store) => (Some(store), None),
+                Err(error) => (None, Some(error.to_string())),
+            },
+            None => (None, Some("LOCALAPPDATA is not defined".to_owned())),
+        };
         Self {
             tailer,
             log_status,
             analyzer: Analyzer::default(),
             run_started: None,
             last_error: None,
+            store,
+            store_error,
         }
     }
 
@@ -85,7 +97,15 @@ impl AppState {
             }
             _ => {}
         }
+        let completed_before = self.analyzer.completed.len();
         self.analyzer.ingest(event);
+        if self.analyzer.completed.len() > completed_before {
+            if let (Some(store), Some(session)) = (&self.store, self.analyzer.completed.last()) {
+                if let Err(error) = store.save(session) {
+                    self.store_error = Some(error.to_string());
+                }
+            }
+        }
     }
 
     fn elapsed(&self) -> String {
@@ -296,12 +316,19 @@ fn draw_main(frame: &mut Frame<'_>, area: Rect, app: &AppState) {
     ];
     frame.render_widget(Paragraph::new(status).block(panel("PARSER STATUS")), right_rows[0]);
 
-    let best = app.analyzer.best_success_seconds().map(format_duration).unwrap_or_else(|| "—".to_owned());
-    let average = app.analyzer.average_success_seconds().map(format_duration).unwrap_or_else(|| "—".to_owned());
+    let best = app.store.as_ref().and_then(|store| store.best_success_seconds().ok().flatten())
+        .or_else(|| app.analyzer.best_success_seconds()).map(format_duration).unwrap_or_else(|| "—".to_owned());
+    let average = app.store.as_ref().and_then(|store| store.average_success_seconds().ok().flatten())
+        .or_else(|| app.analyzer.average_success_seconds()).map(format_duration).unwrap_or_else(|| "—".to_owned());
+    let saved_count = app.store.as_ref().and_then(|store| store.completed_count().ok()).unwrap_or(0);
     let history = Paragraph::new(vec![
-        Line::from(Span::styled(format!("Completed runs  {}", app.analyzer.completed.len()), Style::default().fg(Color::White))),
+        Line::from(Span::styled(format!("Saved runs      {saved_count}"), Style::default().fg(Color::White))),
         Line::from(Span::styled(format!("Best time       {best}"), Style::default().fg(Color::Green))),
         Line::from(Span::styled(format!("Average time    {average}"), Style::default().fg(Color::Cyan))),
+        Line::from(Span::styled(
+            app.store_error.as_deref().unwrap_or("SQLite history ready"),
+            Style::default().fg(if app.store_error.is_some() { Color::Red } else { Color::DarkGray }),
+        )),
     ]).block(panel("RUN STATISTICS"));
     frame.render_widget(history, right_rows[1]);
 }
