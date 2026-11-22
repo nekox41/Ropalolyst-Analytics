@@ -6,6 +6,13 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct LogTimestamp(pub f64);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EventConfidence {
+    Confirmed,
+    StrongCandidate,
+    Experimental,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EventKind {
     MissionStarted,
@@ -25,6 +32,7 @@ pub enum EventKind {
 pub struct GameEvent {
     pub timestamp: LogTimestamp,
     pub kind: EventKind,
+    pub confidence: EventConfidence,
     /// Original source line or a compact source excerpt for diagnostics.
     pub source: String,
     /// Wall-clock ingestion time; not used for run timing.
@@ -32,10 +40,16 @@ pub struct GameEvent {
 }
 
 impl GameEvent {
-    pub fn new(timestamp: LogTimestamp, kind: EventKind, source: impl Into<String>) -> Self {
+    pub fn new(
+        timestamp: LogTimestamp,
+        kind: EventKind,
+        confidence: EventConfidence,
+        source: impl Into<String>,
+    ) -> Self {
         Self {
             timestamp,
             kind,
+            confidence,
             source: source.into(),
             observed_at: Utc::now(),
         }
