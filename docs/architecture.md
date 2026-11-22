@@ -57,9 +57,31 @@ Do not treat transmission playback as proof of a precise health-zero frame until
 - Store both raw log timestamps and derived durations.
 - Video timestamps are a separate clock domain. Align them only with an explicit synchronization offset and retain the offset uncertainty.
 
-## Video/log synchronization notes
+## Video/log synchronization: first 2m28 run
 
-The supplied 2m28 recording is approximately 190.88 seconds long and includes lobby/loading, gameplay, and the results screen. The in-game results panel displays 2m28. This allows a coarse visual alignment, but exact event matching requires frame-level inspection and the matching raw log.
+The supplied MP4 is 1920x1080 at 60 fps and approximately 190.88 seconds long. It includes pre-mission/lobby footage, loading, the complete encounter, and post-mission results.
+
+The results overlay is first visible at approximately video time 163.5s and displays an in-game mission duration of 2m28s. The matching log session has `SS_STARTED` at 42.312s and `Mission Succeeded` at 191.218s, a log-clock duration of 148.906s.
+
+This gives an initial clock mapping of approximately:
+
+`log_timestamp ≈ video_timestamp + 27.7s`
+
+Treat this as a provisional alignment with roughly ±0.5s uncertainty, not a millisecond-accurate synchronization. The in-game result timer is displayed only to whole seconds and the first visible results frame is not necessarily the exact success-event frame.
+
+Approximate visual cross-checks using that mapping:
+
+| Log event time | Estimated video time | Visual observation |
+|---:|---:|---|
+| 69.831s | 42.1s | Arena intro sequence begins |
+| 87.399s | 59.7s | Boss is in the arena and the fight is underway |
+| 98.866s | 71.2s | First crash/down sequence |
+| 129.554s | 101.9s | Second crash/down sequence |
+| 159.200s | 131.5s | Third crash/down sequence |
+| 172.014s | 144.3s | Large impact/explosion and apparent finishing sequence |
+| 191.218s | 163.5s | Mission results overlay is visible |
+
+The footage visually supports the three repeated crash/down cycles and places the objective-complete candidate near the finishing explosion. It does not, by itself, prove the exact frame at which Boss health reaches zero. Keep that event as a strong candidate until further recordings/logs confirm it.
 
 ## Privacy
 
