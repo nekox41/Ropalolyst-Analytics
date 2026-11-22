@@ -92,7 +92,7 @@ impl AppState {
     fn handle_event(&mut self, event: GameEvent) {
         match &event.kind {
             EventKind::MissionStarted => self.run_started = Some(Instant::now()),
-            EventKind::MissionSucceeded | EventKind::MissionFailed | EventKind::MissionEnding => {
+            EventKind::MissionSucceeded | EventKind::MissionFailed => {
                 self.run_started = None;
             }
             _ => {}
