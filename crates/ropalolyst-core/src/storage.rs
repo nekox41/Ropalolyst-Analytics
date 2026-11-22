@@ -91,6 +91,11 @@ mod tests {
         let mut session = MissionSession::new(start.timestamp, start);
         session.apply(GameEvent::new(LogTimestamp(12.5), EventKind::MissionSucceeded, EventConfidence::Confirmed, "sanitized"));
         store.save(&session, "test-generation").unwrap();
+        store.save(&session, "test-generation").unwrap();
         assert_eq!(store.completed_count().unwrap(), 1);
+        let payload: String = store.connection.query_row(
+            "SELECT payload_json FROM runs LIMIT 1", [], |row| row.get(0)
+        ).unwrap();
+        assert!(!payload.contains("sanitized"));
     }
 }
