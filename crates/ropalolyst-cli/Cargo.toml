@@ -16,3 +16,6 @@ crossterm.workspace = true
 ratatui.workspace = true
 ropalolyst-core = { path = "../ropalolyst-core" }
 tracing-subscriber.workspace = true
+
+[build-dependencies]
+winres = "0.1"
