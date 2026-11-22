@@ -2,7 +2,7 @@
 resolver = "2"
 members = [
     "crates/ropalolyst-core",
-    "crates/ropalolyst-desktop",
+    "crates/ropalolyst-cli",
 ]
 
 [workspace.package]
@@ -14,8 +14,9 @@ rust-version = "1.85"
 [workspace.dependencies]
 anyhow = "1"
 chrono = { version = "0.4", features = ["serde"] }
-eframe = { version = "0.31", default-features = false, features = ["default_fonts", "glow"] }
-egui = "0.31"
+crossterm = "0.28"
+ratatui = "0.29"
+rusqlite = { version = "0.32", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
