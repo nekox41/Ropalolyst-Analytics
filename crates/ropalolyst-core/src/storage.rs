@@ -116,6 +116,56 @@ mod tests {
     use super::*;
     use crate::{EventConfidence, EventKind, GameEvent, LogTimestamp};
 
+
+    #[test]
+    fn excludes_legacy_premature_success_from_best_time() {
+        let store = RunStore::open(":memory:").unwrap();
+
+        let start = GameEvent::new(
+            LogTimestamp(0.0),
+            EventKind::MissionStarted,
+            EventConfidence::Confirmed,
+            "fixture",
+        );
+        let mut legacy = MissionSession::new(start.timestamp, start);
+        legacy.apply(GameEvent::new(
+            LogTimestamp(62.817),
+            EventKind::MissionSucceeded,
+            EventConfidence::Confirmed,
+            "fixture",
+        ));
+        // Simulate an old database row written before final-kill validation.
+        legacy.status = crate::MissionStatus::Succeeded;
+        legacy.ended_at = Some(LogTimestamp(62.817));
+        store.save(&legacy, "legacy").unwrap();
+
+        let start = GameEvent::new(
+            LogTimestamp(100.0),
+            EventKind::MissionStarted,
+            EventConfidence::Confirmed,
+            "fixture",
+        );
+        let mut valid = MissionSession::new(start.timestamp, start);
+        valid.apply(GameEvent::new(
+            LogTimestamp(200.0),
+            EventKind::BossTransmission {
+                kind: crate::TransmissionKind::LaserKill,
+            },
+            EventConfidence::Confirmed,
+            "fixture",
+        ));
+        valid.apply(GameEvent::new(
+            LogTimestamp(264.015),
+            EventKind::MissionSucceeded,
+            EventConfidence::Confirmed,
+            "fixture",
+        ));
+        store.save(&valid, "valid").unwrap();
+
+        assert_eq!(store.best_success_seconds().unwrap(), Some(164.015));
+        assert_eq!(store.average_success_seconds().unwrap(), Some(164.015));
+    }
+
     #[test]
     fn stores_completed_session_without_raw_log_dependency() {
         let store = RunStore::open(":memory:").unwrap();
