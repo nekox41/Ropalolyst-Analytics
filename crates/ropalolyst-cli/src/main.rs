@@ -18,7 +18,7 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph},
 };
 use ropalolyst_core::{
-    Analyzer, EventKind, GameEvent, LogTailer, MissionStatus, default_log_path, parse_log_line,
+    Analyzer, EventKind, GameEvent, LogTailer, default_log_path, parse_log_line,
 };
 
 type AppTerminal = Terminal<CrosstermBackend<Stdout>>;
@@ -56,7 +56,9 @@ impl AppState {
 
     fn poll(&mut self) {
         let Some(tailer) = self.tailer.as_mut() else { return };
-        match tailer.read_new_lines() {
+        let path = tailer.path().display().to_string();
+        let result = tailer.read_new_lines();
+        match result {
             Ok(lines) => {
                 for line in lines {
                     if let Some(event) = parse_log_line(&line) {
@@ -64,9 +66,10 @@ impl AppState {
                     }
                 }
                 self.last_error = None;
+                self.log_status = format!("Reading {path}");
             }
             Err(error) if error.kind() == io::ErrorKind::NotFound => {
-                self.log_status = format!("Waiting for {}", tailer.path().display());
+                self.log_status = format!("Waiting for {path}");
             }
             Err(error) => {
                 self.last_error = Some(error.to_string());
@@ -75,7 +78,7 @@ impl AppState {
     }
 
     fn handle_event(&mut self, event: GameEvent) {
-        match event.kind {
+        match &event.kind {
             EventKind::MissionStarted => self.run_started = Some(Instant::now()),
             EventKind::MissionSucceeded | EventKind::MissionFailed | EventKind::MissionEnding => {
                 self.run_started = None;
@@ -92,7 +95,7 @@ impl AppState {
     }
 
     fn encounter(&self) -> (&'static str, Color) {
-        let kind = self.analyzer.timeline.iter().rev().find_map(|event| match event.kind {
+        let kind = self.analyzer.timeline.iter().rev().find_map(|event| match &event.kind {
             EventKind::BossDefeatedCandidate => Some(("DEFEAT CANDIDATE", Color::Green)),
             EventKind::BossCrashEnded { .. } => Some(("CRASH ANIMATION", Color::Yellow)),
             EventKind::BossCrashStarted { sequence } => Some((match sequence {
