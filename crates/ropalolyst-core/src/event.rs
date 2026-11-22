@@ -1,8 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-/// Timestamp as represented by the source log, in seconds from the log's
-/// process-relative clock. Keep the original value for exact split calculations.
+/// Warframe EE.log 中的进程相对时间，单位为秒。
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct LogTimestamp(pub f64);
 
@@ -13,6 +12,21 @@ pub enum EventConfidence {
     Experimental,
 }
 
+/// 已从传讯配置确认的资源语义。它们是脚本请求传讯的信号，不一定等价于动作完成。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TransmissionKind {
+    ShieldHint,
+    FirstShieldDown,
+    ConduitChargeReminder,
+    WeakpointHint,
+    FinalWeakpointHint,
+    FinalMountAttempt,
+    StunHint,
+    LaserHit,
+    LaserMiss,
+    LaserKill,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EventKind {
     MissionStarted,
@@ -21,12 +35,13 @@ pub enum EventKind {
     MissionEnding,
     BossArenaIntroStarted,
     BossArenaIntroEnded,
-    BossFightStarted,
-    BossCrashStarted { sequence: u8 },
-    BossCrashCinematicStopped { sequence: u8 },
-    BossTowerResetStarted,
-    BossTowerResetEnded,
-    BossDefeatedCandidate,
+    BossCrashStarted { tower_id: u8 },
+    BossCrashCinematicStopped { tower_id: u8 },
+    BossTowerResetStarted { cinematic_id: u8 },
+    BossTowerResetEnded { cinematic_id: u8 },
+    BossLandingStarted { cinematic_id: u8 },
+    BossLandingEnded { cinematic_id: u8 },
+    BossTransmission { kind: TransmissionKind },
     Unknown,
 }
 
@@ -35,9 +50,9 @@ pub struct GameEvent {
     pub timestamp: LogTimestamp,
     pub kind: EventKind,
     pub confidence: EventConfidence,
-    /// Original source line or a compact source excerpt for diagnostics.
+    /// 原始日志行，仅用于内存诊断；持久化时会清除。
     pub source: String,
-    /// Wall-clock ingestion time; not used for run timing.
+    /// 读取到事件的墙上时钟，不用于成绩计时。
     pub observed_at: DateTime<Utc>,
 }
 
