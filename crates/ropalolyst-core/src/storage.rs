@@ -92,19 +92,22 @@ impl RunStore {
     }
 
     pub fn best_success_seconds(&self) -> rusqlite::Result<Option<f64>> {
-        self.connection.query_row(
-            "SELECT MIN(duration_seconds) FROM runs WHERE status = 'Succeeded'",
-            [],
-            |row| row.get(0),
-        )
+        Ok(self.successful_sessions()?.iter()
+            .filter(|session| session.has_final_kill_evidence())
+            .filter_map(MissionSession::duration_seconds)
+            .min_by(f64::total_cmp))
     }
 
     pub fn average_success_seconds(&self) -> rusqlite::Result<Option<f64>> {
-        self.connection.query_row(
-            "SELECT AVG(duration_seconds) FROM runs WHERE status = 'Succeeded'",
-            [],
-            |row| row.get(0),
-        )
+        let values: Vec<f64> = self.successful_sessions()?.iter()
+            .filter(|session| session.has_final_kill_evidence())
+            .filter_map(MissionSession::duration_seconds)
+            .collect();
+        if values.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(values.iter().sum::<f64>() / values.len() as f64))
+        }
     }
 }
 
