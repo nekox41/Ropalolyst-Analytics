@@ -366,24 +366,6 @@ fn draw_footer(frame: &mut Frame<'_>, area: Rect, app: &AppState) {
     frame.render_widget(footer, area);
 }
 
-fn event_label(kind: &EventKind) -> (&'static str, Color) {
-    match kind {
-        EventKind::MissionStarted => ("任务开始", Color::Green),
-        EventKind::MissionSucceeded => ("任务成功", Color::Green),
-        EventKind::MissionFailed => ("任务失败", Color::Red),
-        EventKind::MissionEnding => ("任务结束（撤离/中止候选）", Color::Yellow),
-        EventKind::BossArenaIntroStarted => ("Boss 登场动画开始", Color::Cyan),
-        EventKind::BossArenaIntroEnded => ("Boss 登场动画结束", Color::Cyan),
-        EventKind::BossCrashStarted { tower_id, cycle } => (match cycle { 1 => "第1轮撞塔 · 电塔一", 2 => "第2轮撞塔 · 电塔二", 3 => "第3轮撞塔 · 电塔三", _ => match tower_id { 1 => "撞塔 · 电塔一", 2 => "撞塔 · 电塔二", 3 => "撞塔 · 电塔三", _ => "撞塔 · 未知电塔" } }, Color::Yellow),
-        EventKind::BossCrashCinematicStopped { tower_id } => (match tower_id { 1 => "电塔一撞击动画结束", 2 => "电塔二撞击动画结束", 3 => "电塔三撞击动画结束", _ => "撞击动画结束" }, Color::Yellow),
-        EventKind::BossTowerResetStarted { .. } => ("电塔复位动画开始", Color::Yellow),
-        EventKind::BossTowerResetEnded { .. } => ("电塔复位动画结束", Color::Yellow),
-        EventKind::BossLandingStarted { .. } => ("Boss 击杀后落地动画开始", Color::Green),
-        EventKind::BossLandingEnded { .. } => ("Boss 击杀后落地动画结束", Color::Green),
-        EventKind::BossTransmission { kind } => (transmission_label(*kind), Color::Cyan),
-        EventKind::Unknown => ("未知事件", Color::Gray),
-    }
-}
 
 fn mission_status_label(status: ropalolyst_core::MissionStatus) -> &'static str {
     match status {
