@@ -237,7 +237,7 @@ fn draw_metrics(frame: &mut Frame<'_>, area: Rect, app: &AppState) {
         .split(area);
     let current = app.analyzer.active.as_ref()
         .map(|session| mission_status_label(session.status))
-        .unwrap_or_else(|| "等待任务".to_owned());
+        .unwrap_or("等待任务");
     let (encounter, color) = app.encounter();
     metric(frame, columns[0], "当前任务", &current, "任务状态", Color::Gray);
     metric(frame, columns[1], "任务计时", &app.elapsed(), "基于游戏日志时间戳", Color::Cyan);
