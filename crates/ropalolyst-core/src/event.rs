@@ -35,7 +35,7 @@ pub enum EventKind {
     MissionEnding,
     BossArenaIntroStarted,
     BossArenaIntroEnded,
-    BossCrashStarted { tower_id: u8 },
+    BossCrashStarted { tower_id: u8, cycle: u8 },
     BossCrashCinematicStopped { tower_id: u8 },
     BossTowerResetStarted { cinematic_id: u8 },
     BossTowerResetEnded { cinematic_id: u8 },
