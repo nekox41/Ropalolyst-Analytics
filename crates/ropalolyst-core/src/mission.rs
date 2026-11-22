@@ -44,8 +44,21 @@ impl MissionSession {
     pub fn apply(&mut self, event: GameEvent) {
         match &event.kind {
             EventKind::MissionSucceeded => {
-                self.status = MissionStatus::Succeeded;
-                self.ended_at = Some(event.timestamp);
+                // Ropalolyst logs can emit an early, non-terminal "Mission Succeeded"
+                // while the encounter is still running. Accept it only after the
+                // final laser-kill transmission has been received in this session.
+                let final_kill_confirmed = self.events.iter().any(|previous| {
+                    matches!(
+                        previous.kind,
+                        EventKind::BossTransmission {
+                            kind: crate::TransmissionKind::LaserKill
+                        }
+                    )
+                });
+                if final_kill_confirmed {
+                    self.status = MissionStatus::Succeeded;
+                    self.ended_at = Some(event.timestamp);
+                }
             }
             EventKind::MissionFailed => {
                 self.status = MissionStatus::Failed;
@@ -89,6 +102,9 @@ mod tests {
     fn success_closes_session_with_exact_log_duration() {
         let start = event(42.312, EventKind::MissionStarted);
         let mut session = MissionSession::new(start.timestamp, start);
+        session.apply(event(190.0, EventKind::BossTransmission {
+            kind: crate::TransmissionKind::LaserKill,
+        }));
         session.apply(event(191.218, EventKind::MissionSucceeded));
 
         assert_eq!(session.status, MissionStatus::Succeeded);
@@ -110,6 +126,9 @@ mod tests {
     fn success_is_not_overwritten_by_later_generic_ending() {
         let start = event(1.0, EventKind::MissionStarted);
         let mut session = MissionSession::new(start.timestamp, start);
+        session.apply(event(9.0, EventKind::BossTransmission {
+            kind: crate::TransmissionKind::LaserKill,
+        }));
         session.apply(event(10.0, EventKind::MissionSucceeded));
         session.apply(event(11.0, EventKind::MissionEnding));
 
