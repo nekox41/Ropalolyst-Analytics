@@ -72,6 +72,21 @@ impl RunStore {
         Ok(())
     }
 
+    pub fn successful_sessions(&self) -> rusqlite::Result<Vec<MissionSession>> {
+        let mut statement = self.connection.prepare(
+            "SELECT payload_json FROM runs WHERE status = 'Succeeded' ORDER BY started_at"
+        )?;
+        let rows = statement.query_map([], |row| row.get::<_, String>(0))?;
+        let mut sessions = Vec::new();
+        for row in rows {
+            let payload = row?;
+            if let Ok(session) = serde_json::from_str::<MissionSession>(&payload) {
+                sessions.push(session);
+            }
+        }
+        Ok(sessions)
+    }
+
     pub fn completed_count(&self) -> rusqlite::Result<u64> {
         self.connection.query_row("SELECT COUNT(*) FROM runs", [], |row| row.get(0))
     }
