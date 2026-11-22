@@ -44,7 +44,7 @@ impl AppState {
                     (Some(LogTailer::new(path)), format!("Waiting for {display}"))
                 }
             }
-            None => (None, "LOCALAPPDATA is not defined".to_owned()),
+            None => (None, "未找到 LOCALAPPDATA 环境变量".to_owned()),
         };
         let store_path = default_log_path().map(|path| path.with_file_name("ropalolyst-analytics.sqlite3"));
         let (store, store_error) = match store_path {
@@ -123,7 +123,7 @@ impl AppState {
             EventKind::BossArenaIntroStarted => Some(("Boss 登场动画", Color::Cyan)),
             _ => None,
         });
-        kind.unwrap_or(("NOT DETECTED", Color::Gray))
+        kind.unwrap_or(("尚未检测到", Color::Gray))
     }
 }
 
