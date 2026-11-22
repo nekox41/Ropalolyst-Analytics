@@ -1,0 +1,18 @@
+[package]
+name = "ropalolyst-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "ropalolyst-analytics"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+crossterm.workspace = true
+ratatui.workspace = true
+ropalolyst-core = { path = "../ropalolyst-core" }
+tracing-subscriber.workspace = true
