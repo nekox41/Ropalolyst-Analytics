@@ -2,6 +2,7 @@ use std::{
     fs::{self, File},
     io::{self, Read, Seek, SeekFrom},
     path::{Path, PathBuf},
+    time::UNIX_EPOCH,
 };
 
 /// Resolve Warframe's per-user log path without assuming a Windows username.
@@ -18,24 +19,26 @@ pub struct LogTailer {
     path: PathBuf,
     offset: u64,
     pending: Vec<u8>,
+    generation: Option<u128>,
+}
+
+fn file_generation(path: &Path) -> Option<u128> {
+    fs::metadata(path).ok()?.created().ok()?.duration_since(UNIX_EPOCH).ok().map(|time| time.as_nanos())
 }
 
 impl LogTailer {
     pub fn new(path: impl Into<PathBuf>) -> Self {
-        Self { path: path.into(), offset: 0, pending: Vec::new() }
-    }
-
-    /// Start following from the current end if a log already exists. This avoids
-    /// replaying and double-counting old missions when the analyzer is restarted.
-    /// If the game creates EE.log after startup, reading naturally begins at byte zero.
-    pub fn new_from_end(path: impl Into<PathBuf>) -> Self {
         let path = path.into();
-        let offset = fs::metadata(&path).map(|metadata| metadata.len()).unwrap_or(0);
-        Self { path, offset, pending: Vec::new() }
+        let generation = file_generation(&path);
+        Self { path, offset: 0, pending: Vec::new(), generation }
     }
 
     pub fn path(&self) -> &Path {
         &self.path
+    }
+
+    pub fn generation_id(&self) -> String {
+        self.generation.map(|value| value.to_string()).unwrap_or_else(|| "unknown".to_owned())
     }
 
     pub fn offset(&self) -> u64 {
@@ -46,10 +49,16 @@ impl LogTailer {
     /// next poll, and a truncated/recreated log is automatically rewound.
     pub fn read_new_lines(&mut self) -> io::Result<Vec<String>> {
         let metadata = fs::metadata(&self.path)?;
+        let current_generation = file_generation(&self.path);
+        if self.generation.is_some() && current_generation.is_some() && self.generation != current_generation {
+            self.offset = 0;
+            self.pending.clear();
+        }
         if metadata.len() < self.offset {
             self.offset = 0;
             self.pending.clear();
         }
+        self.generation = current_generation.or(self.generation);
 
         let mut file = File::open(&self.path)?;
         file.seek(SeekFrom::Start(self.offset))?;
@@ -96,13 +105,11 @@ mod tests {
     }
 
     #[test]
-    fn new_from_end_ignores_existing_history() {
+    fn reads_existing_log_when_started_after_game_launch() {
         let path = temp_log();
-        fs::write(&path, b"1.0 previous session\n").unwrap();
-        let mut tailer = LogTailer::new_from_end(&path);
-        assert!(tailer.read_new_lines().unwrap().is_empty());
-        fs::OpenOptions::new().append(true).open(&path).unwrap().write_all(b"2.0 current session\n").unwrap();
-        assert_eq!(tailer.read_new_lines().unwrap(), vec!["2.0 current session"]);
+        fs::write(&path, b"1.0 existing mission\\n").unwrap();
+        let mut tailer = LogTailer::new(&path);
+        assert_eq!(tailer.read_new_lines().unwrap(), vec!["1.0 existing mission"]);
         let _ = fs::remove_file(path);
     }
 
