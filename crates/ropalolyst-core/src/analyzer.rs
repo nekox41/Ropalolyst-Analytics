@@ -92,11 +92,46 @@ mod tests {
         assert_eq!(session.events[2].kind, EventKind::BossCrashStarted { tower_id: 1, cycle: 2 });
     }
 
+ 
+    #[test]
+    fn ignores_early_success_and_finishes_on_the_real_ropalolyst_result() {
+        let mut analyzer = Analyzer::default();
+        analyzer.ingest(event(44.224, EventKind::MissionStarted));
+        analyzer.ingest(event(81.951, EventKind::BossArenaIntroStarted));
+        analyzer.ingest(event(107.041, EventKind::MissionSucceeded));
+        assert!(analyzer.active.is_some());
+        assert!(analyzer.completed.is_empty());
+
+        for (at, tower_id) in [(112.070, 1), (142.707, 2), (173.100, 3)] {
+            let cycle = analyzer.active.as_ref().unwrap().events.iter()
+                .filter(|previous| matches!(previous.kind, EventKind::BossCrashStarted { .. }))
+                .count() as u8 + 1;
+            analyzer.ingest(event(at, EventKind::BossCrashStarted { tower_id, cycle: 0 }));
+            assert_eq!(cycle, tower_id);
+        }
+        analyzer.ingest(event(185.418, EventKind::BossTransmission {
+            kind: crate::TransmissionKind::LaserKill,
+        }));
+        analyzer.ingest(event(208.239, EventKind::MissionSucceeded));
+
+        assert!(analyzer.active.is_none());
+        assert_eq!(analyzer.completed.len(), 1);
+        assert_eq!(analyzer.completed[0].status, MissionStatus::Succeeded);
+        assert!((analyzer.completed[0].duration_seconds().unwrap() - 164.015).abs() < 0.000_001);
+        let splits = crate::phase_splits(&analyzer.completed[0]);
+        assert_eq!(splits.len(), 5);
+        assert_eq!(splits.iter().map(|split| split.key.as_str()).collect::<Vec<_>>(),
+            vec!["run", "impact_1", "impact_2", "impact_3", "settlement"]);
+    }
+
     #[test]
     fn successful_runs_produce_best_and_average_statistics() {
         let mut analyzer = Analyzer::default();
         for (start, end) in [(1.0, 11.0), (20.0, 35.0)] {
             analyzer.ingest(event(start, EventKind::MissionStarted));
+            analyzer.ingest(event(end - 1.0, EventKind::BossTransmission {
+                kind: crate::TransmissionKind::LaserKill,
+            }));
             analyzer.ingest(event(end, EventKind::MissionSucceeded));
         }
         assert_eq!(analyzer.best_success_seconds(), Some(10.0));
