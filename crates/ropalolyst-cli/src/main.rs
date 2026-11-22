@@ -1,6 +1,6 @@
 use std::{
     io::{self, Stdout},
-    time::{Duration, Instant},
+    time::Duration,
 };
 
 use anyhow::Result;
@@ -27,7 +27,6 @@ struct AppState {
     tailer: Option<LogTailer>,
     log_status: String,
     analyzer: Analyzer,
-    run_started: Option<Instant>,
     last_error: Option<String>,
     store: Option<RunStore>,
     store_error: Option<String>,
@@ -59,7 +58,6 @@ impl AppState {
             tailer,
             log_status,
             analyzer: Analyzer::default(),
-            run_started: None,
             last_error: None,
             store,
             store_error,
@@ -90,13 +88,6 @@ impl AppState {
     }
 
     fn handle_event(&mut self, event: GameEvent) {
-        match &event.kind {
-            EventKind::MissionStarted => self.run_started = Some(Instant::now()),
-            EventKind::MissionSucceeded | EventKind::MissionFailed => {
-                self.run_started = None;
-            }
-            _ => {}
-        }
         let completed_before = self.analyzer.completed.len();
         self.analyzer.ingest(event);
         if self.analyzer.completed.len() > completed_before {
@@ -112,8 +103,10 @@ impl AppState {
     }
 
     fn elapsed(&self) -> String {
-        self.run_started
-            .map(|started| format_duration(started.elapsed().as_secs_f64()))
+        self.analyzer.active.as_ref()
+            .and_then(|session| self.analyzer.last_event.as_ref().map(|event| event.timestamp.0 - session.started_at.0))
+            .or_else(|| self.analyzer.completed.last().and_then(|session| session.duration_seconds()))
+            .map(format_duration)
             .unwrap_or_else(|| "00:00.000".to_owned())
     }
 
@@ -250,7 +243,7 @@ fn draw_metrics(frame: &mut Frame<'_>, area: Rect, app: &AppState) {
         .unwrap_or_else(|| "IDLE".to_owned());
     let (encounter, color) = app.encounter();
     metric(frame, columns[0], "CURRENT RUN", &current, "Mission session", Color::Gray);
-    metric(frame, columns[1], "RUN TIMER", &app.elapsed(), "Wall clock since SS_STARTED", Color::Cyan);
+    metric(frame, columns[1], "RUN TIMER", &app.elapsed(), "Log clock since SS_STARTED", Color::Cyan);
     metric(frame, columns[2], "ENCOUNTER", encounter, "Log signature detection", color);
 }
 
@@ -362,6 +355,7 @@ fn event_label(kind: &EventKind) -> (&'static str, Color) {
         EventKind::MissionFailed => ("Mission failed", Color::Red),
         EventKind::MissionEnding => ("Mission ending / abort candidate", Color::Yellow),
         EventKind::BossArenaIntroStarted => ("Boss arena intro", Color::Cyan),
+        EventKind::BossArenaIntroEnded => ("Boss arena intro ended", Color::Cyan),
         EventKind::BossArenaIntroEnded => ("Boss arena intro ended", Color::Cyan),
         EventKind::BossFightStarted => ("Boss fight started", Color::Magenta),
         EventKind::BossCrashStarted { sequence } => (match sequence {
