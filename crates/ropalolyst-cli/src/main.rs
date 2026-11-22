@@ -288,10 +288,10 @@ fn draw_main(frame: &mut Frame<'_>, area: Rect, app: &AppState) {
         .unwrap_or_else(|| app.analyzer.completed.clone());
     let averages = average_phase_splits(&history_sessions);
     let mut split_rows = vec![ListItem::new(Line::from(vec![
-        Span::styled(format!("{:<25}", "阶段"), Style::default().fg(Color::DarkGray).add_modifier(Modifier::BOLD)),
-        Span::styled(format!("{:>11}", "累计"), Style::default().fg(Color::DarkGray).add_modifier(Modifier::BOLD)),
-        Span::styled(format!("{:>11}", "阶段耗时"), Style::default().fg(Color::DarkGray).add_modifier(Modifier::BOLD)),
-        Span::styled(format!("{:>11}", "较平均"), Style::default().fg(Color::DarkGray).add_modifier(Modifier::BOLD)),
+        Span::styled(pad_right_display("阶段", 14), Style::default().fg(Color::DarkGray).add_modifier(Modifier::BOLD)),
+        Span::styled(pad_left_display("累计时间", 12), Style::default().fg(Color::DarkGray).add_modifier(Modifier::BOLD)),
+        Span::styled(pad_left_display("阶段耗时", 12), Style::default().fg(Color::DarkGray).add_modifier(Modifier::BOLD)),
+        Span::styled(pad_left_display("较平均", 10), Style::default().fg(Color::DarkGray).add_modifier(Modifier::BOLD)),
     ]))];
     for split in &splits {
         let average = averages.iter().find(|(key, _, _)| key == &split.key);
@@ -303,10 +303,10 @@ fn draw_main(frame: &mut Frame<'_>, area: Rect, app: &AppState) {
             None => ("—".to_owned(), Color::DarkGray),
         };
         split_rows.push(ListItem::new(Line::from(vec![
-            Span::styled(format!("{:<25}", split.label), Style::default().fg(Color::White)),
-            Span::styled(format!("{:>11}", format_duration(split.cumulative_seconds)), Style::default().fg(Color::Cyan)),
-            Span::styled(format!("{:>11}", format_duration(split.split_seconds)), Style::default().fg(Color::Yellow)),
-            Span::styled(format!("{:>11}", delta_text), Style::default().fg(delta_color)),
+            Span::styled(pad_right_display(&split.label, 14), Style::default().fg(Color::White)),
+            Span::styled(pad_left_display(&format_duration(split.cumulative_seconds), 12), Style::default().fg(Color::Cyan)),
+            Span::styled(pad_left_display(&format_duration(split.split_seconds), 12), Style::default().fg(Color::Yellow)),
+            Span::styled(pad_left_display(&delta_text, 10), Style::default().fg(delta_color)),
         ])));
     }
     if splits.is_empty() {
@@ -396,6 +396,22 @@ fn panel(title: &'static str) -> Block<'static> {
         .title(Span::styled(format!(" {title} "), Style::default().fg(Color::LightCyan).add_modifier(Modifier::BOLD)))
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::DarkGray))
+}
+
+
+/// Ratatui string formatting counts Unicode scalar values, not terminal cells.
+/// These labels are Chinese/ASCII only, so a two-cell width for non-ASCII chars
+/// keeps all four columns visually aligned in a terminal.
+fn display_width(value: &str) -> usize {
+    value.chars().map(|ch| if ch.is_ascii() { 1 } else { 2 }).sum()
+}
+
+fn pad_right_display(value: &str, width: usize) -> String {
+    format!("{value}{}", " ".repeat(width.saturating_sub(display_width(value))))
+}
+
+fn pad_left_display(value: &str, width: usize) -> String {
+    format!("{}{}", " ".repeat(width.saturating_sub(display_width(value))), value)
 }
 
 fn format_duration(seconds: f64) -> String {
