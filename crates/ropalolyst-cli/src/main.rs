@@ -40,7 +40,7 @@ impl AppState {
             Some(path) => {
                 let display = path.display().to_string();
                 if path.exists() {
-                    (Some(LogTailer::new_from_end(path)), format!("Watching {display}"))
+                    (Some(LogTailer::new(path)), format!("Watching {display}"))
                 } else {
                     (Some(LogTailer::new(path)), format!("Waiting for {display}"))
                 }
@@ -100,8 +100,11 @@ impl AppState {
         let completed_before = self.analyzer.completed.len();
         self.analyzer.ingest(event);
         if self.analyzer.completed.len() > completed_before {
+            let generation = self.tailer.as_ref()
+                .map(LogTailer::generation_id)
+                .unwrap_or_else(|| "unknown".to_owned());
             if let (Some(store), Some(session)) = (&self.store, self.analyzer.completed.last()) {
-                if let Err(error) = store.save(session) {
+                if let Err(error) = store.save(session, &generation) {
                     self.store_error = Some(error.to_string());
                 }
             }
