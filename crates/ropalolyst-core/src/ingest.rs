@@ -96,6 +96,17 @@ mod tests {
     }
 
     #[test]
+    fn new_from_end_ignores_existing_history() {
+        let path = temp_log();
+        fs::write(&path, b"1.0 previous session\\n").unwrap();
+        let mut tailer = LogTailer::new_from_end(&path);
+        assert!(tailer.read_new_lines().unwrap().is_empty());
+        fs::OpenOptions::new().append(true).open(&path).unwrap().write_all(b"2.0 current session\\n").unwrap();
+        assert_eq!(tailer.read_new_lines().unwrap(), vec!["2.0 current session"]);
+        let _ = fs::remove_file(path);
+    }
+
+    #[test]
     fn restarts_from_beginning_when_log_is_truncated() {
         let path = temp_log();
         fs::write(&path, b"1.0 old line\n").unwrap();
