@@ -15,10 +15,11 @@ impl Analyzer {
         if let (Some(session), EventKind::BossCrashStarted { tower_id, .. }) =
             (self.active.as_ref(), &event.kind)
         {
+            let tower_id = *tower_id;
             let cycle = session.events.iter().filter(|previous| {
                 matches!(&previous.kind, EventKind::BossCrashStarted { .. })
             }).count() as u8 + 1;
-            event.kind = EventKind::BossCrashStarted { tower_id: *tower_id, cycle };
+            event.kind = EventKind::BossCrashStarted { tower_id, cycle };
         }
         if event.kind == EventKind::MissionStarted {
             if let Some(mut previous) = self.active.take() {
