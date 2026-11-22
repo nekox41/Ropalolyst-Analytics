@@ -12,7 +12,7 @@ pub struct RunStore {
 
 impl RunStore {
     pub fn open(path: impl AsRef<Path>) -> rusqlite::Result<Self> {
-        if let Some(parent) = path.as_ref().parent() {
+        if let Some(parent) = path.as_ref().parent().filter(|p| !p.as_os_str().is_empty()) {
             std::fs::create_dir_all(parent).map_err(|error| {
                 rusqlite::Error::ToSqlConversionFailure(Box::new(error))
             })?;
@@ -52,6 +52,22 @@ impl RunStore {
 
     pub fn completed_count(&self) -> rusqlite::Result<u64> {
         self.connection.query_row("SELECT COUNT(*) FROM runs", [], |row| row.get(0))
+    }
+
+    pub fn best_success_seconds(&self) -> rusqlite::Result<Option<f64>> {
+        self.connection.query_row(
+            "SELECT MIN(duration_seconds) FROM runs WHERE status = 'Succeeded'",
+            [],
+            |row| row.get(0),
+        )
+    }
+
+    pub fn average_success_seconds(&self) -> rusqlite::Result<Option<f64>> {
+        self.connection.query_row(
+            "SELECT AVG(duration_seconds) FROM runs WHERE status = 'Succeeded'",
+            [],
+            |row| row.get(0),
+        )
     }
 }
 
