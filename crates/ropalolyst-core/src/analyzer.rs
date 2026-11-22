@@ -47,7 +47,7 @@ impl Analyzer {
     pub fn best_success_seconds(&self) -> Option<f64> {
         self.completed
             .iter()
-            .filter(|session| session.status == MissionStatus::Succeeded)
+             .filter(|session| session.status == MissionStatus::Succeeded && session.has_final_kill_evidence())
             .filter_map(MissionSession::duration_seconds)
             .min_by(f64::total_cmp)
     }
