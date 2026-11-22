@@ -69,7 +69,9 @@ pub fn phase_splits(session: &MissionSession) -> Vec<PhaseSplit> {
 pub fn average_phase_splits(sessions: &[MissionSession]) -> Vec<(String, f64, usize)> {
     let mut totals: std::collections::BTreeMap<String, (f64, usize)> =
         std::collections::BTreeMap::new();
-    for session in sessions.iter().filter(|s| s.status == MissionStatus::Succeeded) {
+    for session in sessions.iter().filter(|s| {
+        s.status == MissionStatus::Succeeded && s.has_final_kill_evidence()
+    }) {
         for split in phase_splits(session) {
             let entry = totals.entry(split.key).or_insert((0.0, 0));
             entry.0 += split.split_seconds;
