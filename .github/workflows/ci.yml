@@ -24,7 +24,7 @@ jobs:
       - name: Run Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Build release executable
-        run: cargo build --release -p ropalolyst-desktop
+        run: cargo build --release -p ropalolyst-cli
       - name: Upload executable
         uses: actions/upload-artifact@v4
         with:
