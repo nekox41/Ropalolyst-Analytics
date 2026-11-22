@@ -107,7 +107,7 @@ mod tests {
     #[test]
     fn reads_existing_log_when_started_after_game_launch() {
         let path = temp_log();
-        fs::write(&path, b"1.0 existing mission\\n").unwrap();
+        fs::write(&path, b"1.0 existing mission\n").unwrap();
         let mut tailer = LogTailer::new(&path);
         assert_eq!(tailer.read_new_lines().unwrap(), vec!["1.0 existing mission"]);
         let _ = fs::remove_file(path);
