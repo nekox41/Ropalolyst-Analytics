@@ -104,7 +104,7 @@ mod tests {
 
         for (at, tower_id) in [(112.070, 1), (142.707, 2), (173.100, 3)] {
             let cycle = analyzer.active.as_ref().unwrap().events.iter()
-                .filter(|previous| matches!(previous.kind, EventKind::BossCrashStarted { .. }))
+                .filter(|previous| matches!(&previous.kind, EventKind::BossCrashStarted { .. }))
                 .count() as u8 + 1;
             analyzer.ingest(event(at, EventKind::BossCrashStarted { tower_id, cycle: 0 }));
             assert_eq!(cycle, tower_id);
