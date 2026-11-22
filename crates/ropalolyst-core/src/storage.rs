@@ -34,7 +34,11 @@ impl RunStore {
     }
 
     pub fn save(&self, session: &MissionSession) -> rusqlite::Result<()> {
-        let payload = serde_json::to_string(session)
+        let mut sanitized = session.clone();
+        for event in &mut sanitized.events {
+            event.source.clear();
+        }
+        let payload = serde_json::to_string(&sanitized)
             .map_err(|error| rusqlite::Error::ToSqlConversionFailure(Box::new(error)))?;
         self.connection.execute(
             "INSERT INTO runs (started_at, ended_at, status, duration_seconds, payload_json)
