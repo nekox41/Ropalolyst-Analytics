@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - "v*"
+    branches:
+      - "release/v0.1.0"
 
 permissions:
   contents: write
@@ -49,5 +51,18 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v0.1.0
+          target_commitish: ${{ github.sha }}
+          name: Ropalolyst Analytics v0.1.0
+          body: |
+            ## Ropalolyst Analytics v0.1.0
+
+            第一版正式发布。
+
+            - 实时监控 Warframe EE.log
+            - 自动记录蝠力使任务的五阶段竞速成绩
+            - 显示累计时间、阶段耗时与历史平均差值
+            - 本地保存历史成绩
+            - Windows x64 独立可执行文件，已嵌入项目图标
           generate_release_notes: true
           files: ropalolyst-analytics-windows-x64.zip
