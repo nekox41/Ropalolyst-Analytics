@@ -18,6 +18,10 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
+      - name: Generate Windows application icon
+        run: |
+          python -m pip install --disable-pip-version-check Pillow
+          python scripts/generate_icon.py
       - name: Verify formatting
         run: cargo fmt --all -- --check
       - name: Run tests
@@ -31,7 +35,16 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force dist | Out-Null
           Copy-Item target/release/ropalolyst-analytics.exe dist/
-          Copy-Item README.md dist/
+          @'
+          Ropalolyst Analytics v0.1.0
+          
+          1. 启动 Warframe，或先启动本程序。
+          2. 程序会自动定位并监控 %LOCALAPPDATA%\\Warframe\\EE.log。
+          3. 正常完成蝠力使任务，程序会自动记录五阶段成绩。
+          4. 按 Q 或 Esc 退出。
+          
+          成绩数据库：ropalolyst-analytics.sqlite3（保存在日志目录）。
+          '@ | Set-Content -Encoding utf8 dist/使用说明.txt
           Compress-Archive -Path dist/* -DestinationPath ropalolyst-analytics-windows-x64.zip
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
