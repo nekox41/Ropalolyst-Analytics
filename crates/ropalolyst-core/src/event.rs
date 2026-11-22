@@ -23,7 +23,9 @@ pub enum EventKind {
     BossArenaIntroEnded,
     BossFightStarted,
     BossCrashStarted { sequence: u8 },
-    BossCrashEnded { sequence: u8 },
+    BossCrashCinematicStopped { sequence: u8 },
+    BossTowerResetStarted,
+    BossTowerResetEnded,
     BossDefeatedCandidate,
     Unknown,
 }
