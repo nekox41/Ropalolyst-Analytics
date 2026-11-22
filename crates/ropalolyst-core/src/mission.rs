@@ -109,7 +109,7 @@ mod tests {
 
         assert_eq!(session.status, MissionStatus::Succeeded);
         assert!((session.duration_seconds().unwrap() - 148.906).abs() < 0.000_001);
-        assert_eq!(session.events.len(), 2);
+        assert_eq!(session.events.len(), 3);
     }
 
     #[test]
