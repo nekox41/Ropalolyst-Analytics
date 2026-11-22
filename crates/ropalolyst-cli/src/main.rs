@@ -356,7 +356,6 @@ fn event_label(kind: &EventKind) -> (&'static str, Color) {
         EventKind::MissionEnding => ("Mission ending / abort candidate", Color::Yellow),
         EventKind::BossArenaIntroStarted => ("Boss arena intro", Color::Cyan),
         EventKind::BossArenaIntroEnded => ("Boss arena intro ended", Color::Cyan),
-        EventKind::BossArenaIntroEnded => ("Boss arena intro ended", Color::Cyan),
         EventKind::BossFightStarted => ("Boss fight started", Color::Magenta),
         EventKind::BossCrashStarted { sequence } => (match sequence {
             1 => "Crash sequence 1 started",
