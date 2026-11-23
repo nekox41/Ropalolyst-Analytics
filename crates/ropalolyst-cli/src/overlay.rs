@@ -216,7 +216,7 @@ mod platform {
                     let face: Vec<u16> = "Segoe UI".encode_utf16().collect();
                     let mut small_log_font: LOGFONTW = unsafe { std::mem::zeroed() };
                     small_log_font.lfHeight = 14;
-                    small_log_font.lfWeight = FW_BOLD;
+                    small_log_font.lfWeight = FW_BOLD as i32;
                     small_log_font.lfCharSet = DEFAULT_CHARSET as u8;
                     for (target, source) in small_log_font.lfFaceName.iter_mut().zip(face.iter().copied()) {
                         *target = source;
