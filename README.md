@@ -30,6 +30,8 @@ Ropalolyst Analytics 自动监控 Warframe 日志，识别蝠力使任务中的�
 
 程序会同时展示累计时间、阶段耗时，以及相较历史平均成绩的差值。成绩保存在本地，无需联网。
 
+检测到任务开始后，程序还会在屏幕顶部显示一个置顶、透明且鼠标穿透的实时计时 Overlay；计时起点通过日志启动时的 UTC 时间锚点校准，Overlay 只显示总计时，不显示阶段信息。
+
 ## 使用方法
 
 1. 前往 [Releases](https://github.com/nekox41/Ropalolyst-Analytics/releases) 下载 Windows x64 版本并解压。

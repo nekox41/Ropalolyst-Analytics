@@ -4,6 +4,7 @@
 //! The terminal UI consumes typed events and snapshots; it never parses EE.log.
 
 pub mod analyzer;
+pub mod clock;
 pub mod event;
 pub mod ingest;
 pub mod mission;
@@ -12,6 +13,7 @@ pub mod storage;
 pub mod splits;
 
 pub use analyzer::Analyzer;
+pub use clock::{LogClockAnchor, parse_clock_anchor};
 pub use event::{EventConfidence, EventKind, GameEvent, LogTimestamp, TransmissionKind};
 pub use ingest::{LogTailer, default_log_path};
 pub use mission::{MissionOutcome, MissionSession, MissionStatus};

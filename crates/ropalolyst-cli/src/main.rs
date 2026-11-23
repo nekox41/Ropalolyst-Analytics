@@ -3,6 +3,9 @@ use std::{
     time::Duration,
 };
 
+mod overlay;
+use overlay::OverlayController;
+
 use anyhow::Result;
 use crossterm::{
     event::{self, Event, KeyCode, KeyEventKind},
@@ -18,7 +21,7 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph},
 };
 use ropalolyst_core::{
-    Analyzer, EventKind, GameEvent, LogTailer, RunStore, TransmissionKind, average_phase_splits, default_log_path, parse_log_line, phase_splits,
+    Analyzer, EventKind, GameEvent, LogTailer, MissionStatus, RunStore, TransmissionKind, average_phase_splits, default_log_path, parse_clock_anchor, parse_log_line, phase_splits,
 };
 
 type AppTerminal = Terminal<CrosstermBackend<Stdout>>;
@@ -30,6 +33,9 @@ struct AppState {
     last_error: Option<String>,
     store: Option<RunStore>,
     store_error: Option<String>,
+    clock_anchor: Option<ropalolyst_core::LogClockAnchor>,
+    overlay: OverlayController,
+    initial_scan: bool,
 }
 
 impl AppState {
@@ -61,6 +67,9 @@ impl AppState {
             last_error: None,
             store,
             store_error,
+            clock_anchor: None,
+            overlay: OverlayController::new(),
+            initial_scan: true,
         }
     }
 
@@ -70,13 +79,23 @@ impl AppState {
         let result = tailer.read_new_lines();
         match result {
             Ok(lines) => {
+                let has_lines = !lines.is_empty();
                 for line in lines {
+                    if let Some(anchor) = parse_clock_anchor(&line) {
+                        self.clock_anchor = Some(anchor);
+                    }
                     if let Some(event) = parse_log_line(&line) {
                         self.handle_event(event);
                     }
                 }
                 self.last_error = None;
                 self.log_status = format!("Reading {path}");
+                if self.initial_scan && has_lines {
+                    if self.analyzer.active.is_none() {
+                        self.overlay.hide();
+                    }
+                    self.initial_scan = false;
+                }
             }
             Err(error) if error.kind() == io::ErrorKind::NotFound => {
                 self.log_status = format!("Waiting for {path}");
@@ -88,8 +107,19 @@ impl AppState {
     }
 
     fn handle_event(&mut self, event: GameEvent) {
+        let kind = event.kind.clone();
+        let started_at_utc = self.clock_anchor
+            .and_then(|anchor| anchor.to_utc(event.timestamp))
+            .unwrap_or(event.observed_at);
         let completed_before = self.analyzer.completed.len();
+
+        if kind == EventKind::MissionStarted {
+            // Map the game's relative log clock to UTC, then run the overlay from a monotonic clock.
+            self.overlay.start(started_at_utc);
+        }
+
         self.analyzer.ingest(event);
+
         if self.analyzer.completed.len() > completed_before {
             let generation = self.tailer.as_ref()
                 .map(LogTailer::generation_id)
@@ -99,9 +129,20 @@ impl AppState {
                     self.store_error = Some(error.to_string());
                 }
             }
+            if let Some(session) = self.analyzer.completed.last() {
+                match session.status {
+                    MissionStatus::Succeeded => {
+                        if let Some(seconds) = session.duration_seconds() {
+                            self.overlay.finish(Duration::from_secs_f64(seconds.max(0.0)));
+                        }
+                    }
+                    MissionStatus::Failed | MissionStatus::Aborted if kind != EventKind::MissionStarted => self.overlay.hide(),
+                    MissionStatus::Failed | MissionStatus::Aborted => {}
+                    MissionStatus::InProgress => {}
+                }
+            }
         }
     }
-
     fn elapsed(&self) -> String {
         self.analyzer.active.as_ref()
             .and_then(|session| self.analyzer.last_event.as_ref().map(|event| event.timestamp.0 - session.started_at.0))
