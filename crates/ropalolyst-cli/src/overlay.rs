@@ -9,7 +9,6 @@ mod platform {
         sync::{
             Arc, Mutex, OnceLock,
             atomic::{AtomicBool, AtomicIsize, Ordering},
-            mpsc,
         },
         thread::{self, JoinHandle},
     };
@@ -23,7 +22,7 @@ mod platform {
         },
         System::LibraryLoader::GetModuleHandleW,
         UI::WindowsAndMessaging::{
-            CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, InvalidateRect,
+            CreateWindowExW, DefWindowProcW, DispatchMessageW, InvalidateRect,
             PeekMessageW, PostMessageW, PostQuitMessage, RegisterClassW, SetLayeredWindowAttributes,
             SetWindowPos, ShowWindow, TranslateMessage, WNDCLASSW, MSG, PAINTSTRUCT,
             CW_USEDEFAULT, HWND_TOPMOST, LWA_ALPHA, MA_NOACTIVATE, PM_REMOVE, SW_HIDE,
@@ -201,7 +200,7 @@ mod platform {
             WM_PAINT => {
                 let mut paint: PAINTSTRUCT = unsafe { std::mem::zeroed() };
                 let hdc = unsafe { BeginPaint(hwnd, &mut paint) };
-                let mut rect = RECT { left: 0, top: 0, right: WINDOW_WIDTH, bottom: WINDOW_HEIGHT };
+                let rect = RECT { left: 0, top: 0, right: WINDOW_WIDTH, bottom: WINDOW_HEIGHT };
                 let brush = unsafe { CreateSolidBrush(0x00221A18) };
                 unsafe { FillRect(hdc, &rect, brush); DeleteObject(brush); }
                 unsafe { SetBkMode(hdc, TRANSPARENT); }
