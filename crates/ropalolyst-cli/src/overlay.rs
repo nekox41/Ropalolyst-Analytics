@@ -234,6 +234,7 @@ mod platform {
                     let mut timer_rect = RECT { left: 0, top: 25, right: WINDOW_WIDTH, bottom: 86 };
                     unsafe { DrawTextW(hdc, timer.as_ptr(), -1, &mut timer_rect, 0x00000001 | 0x00000004 | 0x00000800); }
                     unsafe { SelectObject(hdc, old_font); DeleteObject(small_font); DeleteObject(large_font); }
+                }
                 unsafe { EndPaint(hwnd, &paint); }
                 0
             }
