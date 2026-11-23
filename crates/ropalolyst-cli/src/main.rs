@@ -35,6 +35,7 @@ struct AppState {
     store_error: Option<String>,
     clock_anchor: Option<ropalolyst_core::LogClockAnchor>,
     overlay: OverlayController,
+    initial_scan: bool,
 }
 
 impl AppState {
@@ -68,6 +69,7 @@ impl AppState {
             store_error,
             clock_anchor: None,
             overlay: OverlayController::new(),
+            initial_scan: true,
         }
     }
 
@@ -87,6 +89,12 @@ impl AppState {
                 }
                 self.last_error = None;
                 self.log_status = format!("Reading {path}");
+                if self.initial_scan && !lines.is_empty() {
+                    if self.analyzer.active.is_none() {
+                        self.overlay.hide();
+                    }
+                    self.initial_scan = false;
+                }
             }
             Err(error) if error.kind() == io::ErrorKind::NotFound => {
                 self.log_status = format!("Waiting for {path}");
