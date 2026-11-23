@@ -136,7 +136,8 @@ impl AppState {
                             self.overlay.finish(Duration::from_secs_f64(seconds.max(0.0)));
                         }
                     }
-                    MissionStatus::Failed | MissionStatus::Aborted => self.overlay.hide(),
+                    MissionStatus::Failed | MissionStatus::Aborted if kind != EventKind::MissionStarted => self.overlay.hide(),
+                    MissionStatus::Failed | MissionStatus::Aborted => {}
                     MissionStatus::InProgress => {}
                 }
             }
