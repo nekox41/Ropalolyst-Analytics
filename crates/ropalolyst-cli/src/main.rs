@@ -119,6 +119,8 @@ impl AppState {
                 if let Err(error) = store.save(session, &generation) {
                     self.store_error = Some(error.to_string());
                 }
+            }
+            if let Some(session) = self.analyzer.completed.last() {
                 match session.status {
                     MissionStatus::Succeeded => {
                         if let Some(seconds) = session.duration_seconds() {
