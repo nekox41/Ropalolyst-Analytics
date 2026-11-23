@@ -15,16 +15,16 @@ mod platform {
     use windows_sys::Win32::{
         Foundation::{HWND, LPARAM, LRESULT, RECT, WPARAM},
         Graphics::Gdi::{
-            BeginPaint, CreateFontW, CreateSolidBrush, DEFAULT_CHARSET, DEFAULT_PITCH,
-            DeleteObject, DrawTextW, EndPaint, FF_DONTCARE, FillRect, FW_BOLD,
-            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, SelectObject,
+            BeginPaint, CreateFontIndirectW, CreateSolidBrush, DEFAULT_CHARSET,
+            DeleteObject, DrawTextW, EndPaint, FillRect, FW_BOLD, InvalidateRect,
+            LOGFONTW, PAINTSTRUCT, SelectObject,
             SetBkMode, SetTextColor, TRANSPARENT,
         },
         System::LibraryLoader::GetModuleHandleW,
         UI::WindowsAndMessaging::{
-            CreateWindowExW, DefWindowProcW, DispatchMessageW, InvalidateRect,
+            CreateWindowExW, DefWindowProcW, DispatchMessageW,
             PeekMessageW, PostMessageW, PostQuitMessage, RegisterClassW, SetLayeredWindowAttributes,
-            SetWindowPos, ShowWindow, TranslateMessage, WNDCLASSW, MSG, PAINTSTRUCT,
+            SetWindowPos, ShowWindow, TranslateMessage, WNDCLASSW, MSG,
             CW_USEDEFAULT, HWND_TOPMOST, LWA_ALPHA, MA_NOACTIVATE, PM_REMOVE, SW_HIDE,
             SW_SHOWNOACTIVATE, SWP_NOACTIVATE, WM_CLOSE, WM_DESTROY, WM_MOUSEACTIVATE,
             WM_NCHITTEST, WM_PAINT, WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
@@ -203,7 +203,7 @@ mod platform {
                 let rect = RECT { left: 0, top: 0, right: WINDOW_WIDTH, bottom: WINDOW_HEIGHT };
                 let brush = unsafe { CreateSolidBrush(0x00221A18) };
                 unsafe { FillRect(hdc, &rect, brush); DeleteObject(brush); }
-                unsafe { SetBkMode(hdc, TRANSPARENT); }
+                unsafe { SetBkMode(hdc, TRANSPARENT as i32); }
 
                 let (visible, elapsed) = data().lock().map(|state| {
                     let elapsed = state.frozen.or_else(|| state.started.map(|start| start.elapsed())).unwrap_or(Duration::ZERO);
@@ -213,19 +213,27 @@ mod platform {
                     let label: Vec<u16> = "ROPALOLYST ANALYTICS".encode_utf16().chain(Some(0)).collect();
                     let timer: Vec<u16> = format_duration(elapsed).encode_utf16().chain(Some(0)).collect();
 
-                    let face: Vec<u16> = "Segoe UI".encode_utf16().chain(Some(0)).collect();
-                    let small_font = unsafe { CreateFontW(14, 0, 0, 0, FW_BOLD, 0, 0, 0, DEFAULT_CHARSET as u32, OUT_DEFAULT_PRECIS as u32, CLIP_DEFAULT_PRECIS as u32, CLEARTYPE_QUALITY as u32, DEFAULT_PITCH | FF_DONTCARE, face.as_ptr()) };
+                    let face: Vec<u16> = "Segoe UI".encode_utf16().collect();
+                    let mut small_log_font: LOGFONTW = unsafe { std::mem::zeroed() };
+                    small_log_font.lfHeight = 14;
+                    small_log_font.lfWeight = FW_BOLD;
+                    small_log_font.lfCharSet = DEFAULT_CHARSET as u8;
+                    for (target, source) in small_log_font.lfFaceName.iter_mut().zip(face.iter().copied()) {
+                        *target = source;
+                    }
+                    let small_font = unsafe { CreateFontIndirectW(&small_log_font) };
                     let old_font = unsafe { SelectObject(hdc, small_font) };
                     unsafe { SetTextColor(hdc, 0x00B8D8D0); }
                     let mut label_rect = RECT { left: 0, top: 8, right: WINDOW_WIDTH, bottom: 30 };
                     unsafe { DrawTextW(hdc, label.as_ptr(), -1, &mut label_rect, 0x00000001 | 0x00000020 | 0x00000800); }
 
-                    let large_font = unsafe { CreateFontW(42, 0, 0, 0, FW_BOLD, 0, 0, 0, DEFAULT_CHARSET as u32, OUT_DEFAULT_PRECIS as u32, CLIP_DEFAULT_PRECIS as u32, CLEARTYPE_QUALITY as u32, DEFAULT_PITCH | FF_DONTCARE, face.as_ptr()) };
+                    let mut large_log_font = small_log_font;
+                    large_log_font.lfHeight = 42;
+                    let large_font = unsafe { CreateFontIndirectW(&large_log_font) };
                     unsafe { SelectObject(hdc, large_font); SetTextColor(hdc, 0x00FFFFFF); }
                     let mut timer_rect = RECT { left: 0, top: 25, right: WINDOW_WIDTH, bottom: 86 };
                     unsafe { DrawTextW(hdc, timer.as_ptr(), -1, &mut timer_rect, 0x00000001 | 0x00000004 | 0x00000800); }
                     unsafe { SelectObject(hdc, old_font); DeleteObject(small_font); DeleteObject(large_font); }
-                }
                 unsafe { EndPaint(hwnd, &paint); }
                 0
             }
