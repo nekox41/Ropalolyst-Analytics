@@ -79,6 +79,7 @@ impl AppState {
         let result = tailer.read_new_lines();
         match result {
             Ok(lines) => {
+                let has_lines = !lines.is_empty();
                 for line in lines {
                     if let Some(anchor) = parse_clock_anchor(&line) {
                         self.clock_anchor = Some(anchor);
@@ -89,7 +90,7 @@ impl AppState {
                 }
                 self.last_error = None;
                 self.log_status = format!("Reading {path}");
-                if self.initial_scan && !lines.is_empty() {
+                if self.initial_scan && has_lines {
                     if self.analyzer.active.is_none() {
                         self.overlay.hide();
                     }
