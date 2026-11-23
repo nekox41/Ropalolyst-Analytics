@@ -3,7 +3,7 @@
 //! The core owns log discovery, incremental ingestion, parsing, and mission state.
 //! The terminal UI consumes typed events and snapshots; it never parses EE.log.
 
-pub mod analyzer;
+pub mod analyzer;\npub mod clock;
 pub mod event;
 pub mod ingest;
 pub mod mission;
@@ -11,7 +11,7 @@ pub mod parser;
 pub mod storage;
 pub mod splits;
 
-pub use analyzer::Analyzer;
+pub use analyzer::Analyzer;\npub use clock::{LogClockAnchor, parse_clock_anchor};
 pub use event::{EventConfidence, EventKind, GameEvent, LogTimestamp, TransmissionKind};
 pub use ingest::{LogTailer, default_log_path};
 pub use mission::{MissionOutcome, MissionSession, MissionStatus};
