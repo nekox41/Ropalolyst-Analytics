@@ -1,0 +1,47 @@
+name: Desktop CI
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: Generate application icons
+        run: |
+          python -m pip install --disable-pip-version-check Pillow
+          python scripts/generate_icon.py
+      - name: Install frontend tooling
+        run: npm install --no-audit --no-fund
+      - name: Check frontend syntax
+        run: npm run check
+      - name: Verify Rust formatting
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
+      - name: Run tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml --all-targets
+      - name: Run Clippy
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+      - name: Build portable Windows executable
+        run: cargo build --manifest-path src-tauri/Cargo.toml --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ropalolyst-desktop-portable-windows-x64
+          path: src-tauri/target/release/ropalolyst-desktop.exe
+          if-no-files-found: error
