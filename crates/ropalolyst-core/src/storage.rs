@@ -223,6 +223,45 @@ mod tests {
     use crate::{EventConfidence, EventKind, GameEvent, LogTimestamp};
 
 
+
+    #[test]
+    fn renamed_favorite_record_stays_deleted_after_log_replay() {
+        let store = RunStore::open(":memory:").unwrap();
+        let start = GameEvent::new(
+            LogTimestamp(50.0), EventKind::MissionStarted,
+            EventConfidence::Confirmed, "private raw line",
+        );
+        let mut session = MissionSession::new(start.timestamp, start);
+        session.apply(GameEvent::new(
+            LogTimestamp(150.0),
+            EventKind::BossTransmission { kind: crate::TransmissionKind::LaserKill },
+            EventConfidence::Confirmed, "private source",
+        ));
+        session.apply(GameEvent::new(
+            LogTimestamp(200.0), EventKind::MissionSucceeded,
+            EventConfidence::Confirmed, "private source",
+        ));
+        store.save_with_utc(&session, "generation", Some("2026-11-22T08:00:00Z")).unwrap();
+        let before = store.history().unwrap();
+        assert_eq!(before.len(), 1);
+        assert!(!before[0].favorite);
+        assert_eq!(before[0].started_utc.as_deref(), Some("2026-11-22T08:00:00Z"));
+        assert!(!before[0].session.events[0].source.contains("private"));
+
+        store.rename(before[0].id, "最佳成绩").unwrap();
+        store.toggle_favorite(before[0].id).unwrap();
+        let updated = store.history().unwrap();
+        assert_eq!(updated[0].name, "最佳成绩");
+        assert!(updated[0].favorite);
+
+        store.delete(before[0].id).unwrap();
+        // A historical replay uses the same stable session identity, and
+        // cannot resurrect a user's deliberately deleted run.
+        store.save(&session, "generation").unwrap();
+        assert!(store.history().unwrap().is_empty());
+        assert_eq!(store.completed_count().unwrap(), 0);
+    }
+
     #[test]
     fn excludes_legacy_premature_success_from_best_time() {
         let store = RunStore::open(":memory:").unwrap();
