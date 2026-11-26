@@ -18,5 +18,5 @@ pub use event::{EventConfidence, EventKind, GameEvent, LogTimestamp, Transmissio
 pub use ingest::{LogTailer, default_log_path};
 pub use mission::{MissionOutcome, MissionSession, MissionStatus};
 pub use parser::parse_log_line;
-pub use storage::RunStore;
+pub use storage::{HistoryRecord, RunStore};
 pub use splits::{PhaseSplit, average_phase_splits, phase_splits};
