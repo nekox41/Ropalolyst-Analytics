@@ -1,7 +1,7 @@
-name: Desktop Release v0.2.0
+name: Desktop Release v0.2.1
 on:
   push:
-    branches: [release/v0.2.0]
+    branches: [release/v0.2.1]
 permissions:
   contents: write
 jobs:
@@ -41,28 +41,28 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force dist | Out-Null
-          Copy-Item src-tauri/target/release/ropalolyst-desktop.exe dist/ropalolyst-analytics-v0.2.0-portable.exe
+          Copy-Item src-tauri/target/release/ropalolyst-desktop.exe dist/ropalolyst-analytics-v0.2.1-portable.exe
           $installer = Get-ChildItem "src-tauri/target/release/bundle/nsis/*.exe" | Select-Object -First 1
           if (-not $installer) { throw "Missing Windows NSIS installer" }
-          Copy-Item $installer.FullName "dist/ropalolyst-analytics-v0.2.0-setup.exe"
+          Copy-Item $installer.FullName "dist/ropalolyst-analytics-v0.2.1-setup.exe"
           Get-ChildItem dist/*.exe | ForEach-Object {
             $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
             "$hash  $($_.Name)"
           } | Set-Content -Encoding utf8 dist/SHA256SUMS.txt
-          Compress-Archive -Path dist/ropalolyst-analytics-v0.2.0-portable.exe -DestinationPath dist/ropalolyst-analytics-v0.2.0-portable.zip
+          Compress-Archive -Path dist/ropalolyst-analytics-v0.2.1-portable.exe -DestinationPath dist/ropalolyst-analytics-v0.2.1-portable.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: ropalolyst-analytics-v0.2.0-windows
+          name: ropalolyst-analytics-v0.2.1-windows
           path: dist/*
           if-no-files-found: error
-      - name: Publish v0.2.0 Release
+      - name: Publish v0.2.1 Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.2.0
+          tag_name: v0.2.1
           target_commitish: ${{ github.sha }}
-          name: Ropalolyst Analytics v0.2.0
+          name: Ropalolyst Analytics v0.2.1
           body: |
-            ## v0.2.0 · 全新桌面版
+            ## v0.2.1 · 全新桌面版
 
             - 全新 PTANext 风格的中文 Tauri 2 桌面界面。
             - 主页、历史记录、统计分析和设置。
