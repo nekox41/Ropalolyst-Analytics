@@ -34,7 +34,7 @@ const svg = name => '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">'+
 const btn=(name,label,action,extra="")=>'<button type="button" title="'+esc(label)+'" aria-label="'+esc(label)+'" data-action="'+action+'" '+extra+'>'+svg(name)+'</button>';
 const pages=[["home","主页","home"],["storage","历史记录","box"],["analytics","统计分析","chart"],["settings","设置","settings"]];
 const state={
- page:"home",runs:[],selected:null,revision:-1,status:{mode:"waiting"},overlay:null,
+ page:"home",runs:[],selected:null,revision:-1,status:{mode:"waiting"},overlay:null,compareMode:"average",
  sort:"newest",filter:"complete",query:"",pageNo:0,
  light:localStorage.getItem("ropa-theme")==="light",busy:false,
 };
@@ -59,6 +59,12 @@ function average(values){return values.length?values.reduce((a,b)=>a+b,0)/values
 function averages(){
  return keys.map(key=>average(completedRecords().map(r=>r.splits.find(s=>s.key===key)?.split_seconds).filter(Number.isFinite)));
 }
+function phaseBests(){
+ return keys.map(key=> {
+  const values=completedRecords().map(r=>r.splits.find(s=>s.key===key)?.split_seconds).filter(Number.isFinite);
+  return values.length?Math.min(...values):null;
+ });
+}
 function badge(record){
  const status=({Succeeded:"正常完成",Failed:"任务失败",Aborted:"已中止",InProgress:"进行中"})[record.status]||record.status;
  const style=record.status==="Succeeded"?"success":record.status==="Failed"?"failed":"aborted";
@@ -70,13 +76,20 @@ function delta(value,baseline){
  return '<span class="'+(diff<0?"fast":diff>0?"slow":"muted")+'">'+(diff>0?"+":"")+diff.toFixed(3)+"s</span>";
 }
 function phaseGrid(record){
- const avg=averages();
+ const reference=state.compareMode==="best"?phaseBests():averages();
+ const referenceLabel=state.compareMode==="best"?"较阶段最佳":"较平均";
  return '<div class="phase-grid">'+names.map((name,index)=>{
   const split=record?.splits.find(s=>s.key===keys[index]);
+  const comparison=delta(split?.split_seconds,reference[index]);
   return '<article class="phase-card"><div class="phase-title"><span>'+name+'</span><span style="color:'+colors[index]+'">0'+(index+1)+'</span></div>'+
    '<strong>'+clock(split?.cumulative_seconds)+'</strong>'+
-   '<div class="phase-sub"><span>阶段用时：'+fmt(split?.split_seconds)+'</span><span>'+delta(split?.split_seconds,avg[index])+'</span></div></article>';
+   '<div class="phase-sub"><span>阶段用时：'+fmt(split?.split_seconds)+'</span><span class="phase-comparison">'+(comparison?'<span class="compare-label">'+referenceLabel+'</span>'+comparison:'<span class="compare-label">'+referenceLabel+'</span><span class="muted">暂无数据</span>')+'</span></div></article>';
  }).join("")+'</div>';
+}
+function comparisonToggle(){
+ return '<div class="compare-toggle" role="group" aria-label="阶段成绩对比方式">'+
+ '<button type="button" data-action="compare:average" class="'+(state.compareMode==="average"?"active":"")+'">相较于平均</button>'+
+ '<button type="button" data-action="compare:best" class="'+(state.compareMode==="best"?"active":"")+'">相较于最佳</button></div>';
 }
 function metrics(record){
  const rows=[["总用时",record?.duration_seconds,"clock","#69adff"],...names.map((name,index)=>[name,record?.splits.find(s=>s.key===keys[index])?.split_seconds,"clock",colors[index]])];
@@ -95,7 +108,7 @@ function renderHome(){
  const summary=live?'<div class="section-head"><h2>正在进行的任务</h2><span class="status-chip success">● 实时计时 · '+clock(state.status.elapsed_seconds)+'</span></div>'
  :'<div class="section-head"><h2>'+(record?esc(record.name):"等待第一场任务")+'</h2>'+(record?badge(record):"")+'</div>';
  $("content").innerHTML=summary+metrics(active)+
- '<div class="section-head"><h2>五阶段竞速数据</h2><span class="muted">累计时间 / 阶段耗时 / 较平均</span></div>'+
+ '<div class="section-head phase-section-head"><h2>五阶段竞速数据</h2>'+comparisonToggle()+'</div>'+
  phaseGrid(active)+
  (record?'<div class="detail-panel" style="margin-top:14px"><div class="section-head"><h2>已保存的任务</h2><span class="muted">'+esc(date(record.started_utc))+'</span></div>'+
  '<div class="run-title">'+badge(record)+'<span class="name">'+esc(record.name)+'</span>'+btn("edit","重命名","rename:"+record.id)+btn("star",record.favorite?"取消收藏":"收藏","favorite:"+record.id)+(completed(record)?'<span class="muted"> · '+clock(record.duration_seconds)+'</span>':"")+'</div></div>':
@@ -229,6 +242,7 @@ async function action(name){
   render();return;
  }
  if(kind==="theme"){state.light=!state.light;localStorage.setItem("ropa-theme",state.light?"light":"dark");render();return;}
+ if(kind==="compare"){state.compareMode=arg;render();return;}
  if(kind==="refresh"){await refresh(true);return;}
  if(kind==="older"||kind==="newer"){
   const i=state.runs.findIndex(r=>r.id===state.selected);

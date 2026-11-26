@@ -105,3 +105,13 @@ dialog{width: min(430px,90vw);background:var(--panel);color:var(--text);border:1
 button.danger{color:#ed777d}
 @media(max-width:1100px){.metric-grid{grid-template-columns:repeat(3,1fr)}.phase-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:700px){main{padding:24px 18px 60px}.metric-grid{grid-template-columns:repeat(2,1fr)}.phase-grid,.stat-grid,.detail-grid{grid-template-columns:1fr}.ropa-run{grid-template-columns:1fr auto}.ropa-run .run-actions{grid-column:1/-1}.bar-row{grid-template-columns:70px 1fr 75px}header h1{font-size:22px}}
+
+
+/* Per-stage comparison mode switch */
+.phase-section-head{align-items:center;flex-wrap:wrap}
+.compare-toggle{display:inline-flex;align-items:center;gap:3px;padding:3px;border:1px solid var(--line);border-radius:9px;background:var(--panel)}
+.compare-toggle button{border:0;border-radius:6px;background:transparent;color:var(--muted);padding:7px 12px;font-size:12px;font-weight:650;cursor:pointer;white-space:nowrap}
+.compare-toggle button.active{background:var(--hover);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.phase-comparison{display:flex;align-items:center;gap:6px}
+.compare-label{color:var(--muted);font-size:11px}
+@media(max-width:620px){.phase-section-head{align-items:flex-start}.compare-toggle{width:100%}.compare-toggle button{flex:1}}
