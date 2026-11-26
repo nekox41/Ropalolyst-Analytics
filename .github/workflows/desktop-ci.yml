@@ -32,6 +32,8 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Check frontend syntax
         run: npm run check
+      - name: Format Rust sources
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml --all
       - name: Verify Rust formatting
         run: cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
       - name: Run tests
