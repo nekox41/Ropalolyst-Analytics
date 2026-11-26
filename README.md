@@ -1,66 +1,68 @@
 <div align="center">
 
-<img src="logo.png" width="240" alt="Ropalolyst Analytics — aa project artwork">
+<img src="logo.png" width="210" alt="Ropalolyst Analytics · aa">
 
 # Ropalolyst Analytics
 
-**Warframe 蝠力使竞速分析器**
+**Warframe 蝠力使竞速分析器 · Rust × Tauri 2**
 
-轻量、实时的 EE.log 竞速计时工具。
+轻量、实时、专注每一次竞速表现。
 
-[下载 Windows 版本](https://github.com/nekox41/Ropalolyst-Analytics/releases)　·　[查看构建状态](https://github.com/nekox41/Ropalolyst-Analytics/actions)
+[下载 Windows 版本](https://github.com/nekox41/Ropalolyst-Analytics/releases/latest) · [构建状态](https://github.com/nekox41/Ropalolyst-Analytics/actions)
 
 </div>
 
 ---
 
-## 关于项目
+## 简介
 
-Ropalolyst Analytics 自动监控 Warframe 日志，识别蝠力使任务中的关键事件，并以任务开始时刻为计时基准，记录整场成绩。
+Ropalolyst Analytics 自动读取 Warframe 的 `EE.log`，以确定的日志事件记录蝠力使刺杀成绩。全新的桌面版采用与 **PT Analytics Next** 相近的设计：现代化中文界面、清晰的时间卡片，以及无需联网的本地历史记录。
 
-竞速过程被整理为五个清晰的阶段：
-
-| 阶段 | 计时内容 |
+| 功能 | 说明 |
 |:--|:--|
-| 跑图 | 任务开始 → 蝠力使登场 |
-| 第一次撞击 | 跑图结束 → 第一次撞击电塔 |
-| 第二次撞击 | 第一次 → 第二次撞击电塔 |
-| 第三次撞击 | 第二次 → 第三次撞击电塔 |
-| 结算时间 | 第三次撞击 → 任务成功 |
+| **主页** | 最近一场成绩、累计计时、五阶段用时 |
+| **历史记录** | 搜索、排序、重命名、收藏、删除、复制成绩 |
+| **统计分析** | 最佳成绩、平均用时、阶段平均、成绩排行 |
+| **游戏内 Overlay** | 屏幕顶部的实时透明计时器，可调整位置、尺寸和透明度 |
+| **数据安全** | SQLite 本地存储，保留旧版记录，删除后不会被同一份日志重新导入 |
 
-程序会同时展示累计时间、阶段耗时，以及相较历史平均成绩的差值。成绩保存在本地，无需联网。
+竞速始终采用五个稳定阶段：
 
-检测到任务开始后，程序还会在屏幕顶部显示一个置顶、透明且鼠标穿透的实时计时 Overlay；计时起点通过日志启动时的 UTC 时间锚点校准，Overlay 只显示总计时，不显示阶段信息。
+**跑图 → 第一次撞击 → 第二次撞击 → 第三次撞击 → 结算时间**
+
+不注入游戏、不读取游戏内存。成绩分段采用日志时间戳；Overlay 使用日志启动时的 UTC 时间锚点与系统单调时钟对齐。
 
 ## 使用方法
 
-1. 前往 [Releases](https://github.com/nekox41/Ropalolyst-Analytics/releases) 下载 Windows x64 版本并解压。
-2. 启动 Warframe，运行 `ropalolyst-analytics.exe`（也支持先启动分析器）。
-3. 正常完成蝠力使任务，程序会自动识别并保存成绩。
-4. 按 `Q` 或 `Esc` 退出。
+1. 在 [Releases](https://github.com/nekox41/Ropalolyst-Analytics/releases/latest) 下载 Windows x64 安装版或便携版。
+2. 启动 Warframe 并打开本程序，软件会自动定位 `EE.log`。
+3. 进入蝠力使任务即可开始计时，任务结束后自动保存成绩。
+4. 在 **历史记录** 中管理成绩；在 **设置** 中调整游戏内 Overlay。
 
-默认日志位置：
+默认日志：`%LOCALAPPDATA%\Warframe\EE.log`
 
-```text
-%LOCALAPPDATA%\Warframe\EE.log
-```
+沿用旧版 SQLite 数据库：`%LOCALAPPDATA%\Warframe\ropalolyst-analytics.sqlite3`
 
-成绩数据库 `ropalolyst-analytics.sqlite3` 保存在日志文件所在目录。
+便携版需要 Microsoft Edge WebView2 Runtime；安装版可由安装程序处理运行时依赖。
 
 ## 从源码构建
 
-需要 Rust stable 工具链和 Python 3。先生成 Windows 图标，再构建：
+需要 Windows、Rust stable、Node.js 22+、Python 3 和 WebView2。
 
 ```powershell
 python -m pip install Pillow
 python scripts/generate_icon.py
+npm install
+npm run check
+npm run build -- --bundles nsis
+```
+
+如果仍然偏好旧版控制台程序，可继续使用：
+
+```powershell
 cargo build --release -p ropalolyst-cli
 ```
 
-生成的可执行文件位于 `target/release/ropalolyst-analytics.exe`。
-
 ---
 
-<div align="center">
-<sub>Made with care · Built for consistent runs</sub>
-</div>
+<div align="center"><sub>Made with care · Built for consistent runs</sub></div>

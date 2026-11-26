@@ -1,0 +1,54 @@
+{
+  "productName": "Ropalolyst Analytics",
+  "version": "0.2.0",
+  "identifier": "io.github.nekox41.ropalolystanalytics",
+  "build": {
+    "frontendDist": "../ui"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "Ropalolyst Analytics",
+        "width": 1320,
+        "height": 810,
+        "minWidth": 850,
+        "minHeight": 560,
+        "label": "main"
+      },
+      {
+        "label": "overlay",
+        "title": "Ropalolyst Timer",
+        "url": "overlay.html",
+        "width": 360,
+        "height": 100,
+        "minWidth": 230,
+        "minHeight": 70,
+        "visible": false,
+        "focus": false,
+        "focusable": false,
+        "transparent": true,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": true,
+        "shadow": false,
+        "closable": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src ipc: http://ipc.localhost; script-src 'self'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "nsis"
+    ],
+    "icon": [
+      "icons/icon.ico",
+      "icons/128x128.png"
+    ],
+    "licenseFile": "../LICENSE"
+  }
+}

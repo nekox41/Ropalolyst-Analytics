@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ropalolyst Analytics</title><link rel="icon" href="logo.png">
+<link rel="stylesheet" href="style.css"><script defer src="app.js"></script></head>
+<body>
+<aside id="rail" aria-label="页面导航"></aside>
+<main>
+  <header><div><h1>Ropalolyst <small>Analytics</small></h1><p id="subtitle">蝠力使竞速分析</p></div><div id="toolbar" class="toolbar"></div></header>
+  <section id="content" aria-live="polite"></section>
+</main>
+<footer><div id="status"><i></i> 正在连接分析核心…</div><span id="progress"></span><span id="version">v0.2.0</span><a id="author-link" href="https://github.com/nekox41/Ropalolyst-Analytics" target="_blank" rel="noopener noreferrer">By. Aameow</a></footer>
+<dialog id="edit"><form id="edit-form"><h2>修改记录名称</h2><input id="dialog-input" maxlength="100"><div class="dialog-actions"><button id="edit-cancel" type="button">取消</button><button class="primary" type="submit">保存</button></div></form></dialog>
+<dialog id="confirm-delete"><form method="dialog"><h2>删除这条记录？</h2><p>记录将从列表中隐藏，且不会被日志回放重新导入。</p><div class="dialog-actions"><button value="cancel">取消</button><button value="delete" class="danger">删除记录</button></div></form></dialog>
+<div id="toast" role="status"></div></body></html>
