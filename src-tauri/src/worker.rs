@@ -90,6 +90,7 @@ pub fn run(shared: Arc<Shared>, app: AppHandle) {
                         anchor = Some(clock);
                     }
                     if let Some(event) = parse_log_line(&line) {
+                        let restarting = event.kind == ropalolyst_core::EventKind::MissionStarted;
                         let before = analyzer.completed.len();
                         analyzer.ingest(event);
                         for session in analyzer.completed.iter().skip(before) {
@@ -97,8 +98,10 @@ pub fn run(shared: Arc<Shared>, app: AppHandle) {
                                 Ok(()) => revision += 1,
                                 Err(error) => status.error = error,
                             }
-                            if let Some(seconds) = session.duration_seconds() {
-                                finished = Some((session.status, seconds));
+                            if !restarting {
+                                if let Some(seconds) = session.duration_seconds() {
+                                    finished = Some((session.status, seconds));
+                                }
                             }
                         }
                     }
