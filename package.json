@@ -1,0 +1,14 @@
+{
+  "name": "ropalolyst-analytics-desktop",
+  "private": true,
+  "version": "0.2.0",
+  "license": "MIT",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "check": "node --check ui/app.js && node --check ui/overlay.js"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0"
+  }
+}
